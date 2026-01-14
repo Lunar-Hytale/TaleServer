@@ -1,0 +1,7 @@
++ com/hypixel/hytale/**
++ META-INF/**
+- META-INF/*.SF
+- META-INF/*.RSA
+- META-INF/*.DSA
+- module-info.class
+- META-INF/versions/**
