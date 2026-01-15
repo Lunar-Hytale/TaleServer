@@ -22,6 +22,7 @@ import io.netty.channel.socket.SocketProtocolFamily;
 import io.netty.channel.socket.nio.NioChannelOption;
 import io.netty.handler.codec.quic.InsecureQuicTokenHandler;
 import io.netty.handler.codec.quic.QuicChannel;
+import io.netty.handler.codec.quic.QuicCongestionControlAlgorithm;
 import io.netty.handler.codec.quic.QuicServerCodecBuilder;
 import io.netty.handler.codec.quic.QuicSslContext;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
@@ -130,17 +131,19 @@ public class QUICTransport implements Transport {
 
       public void channelActive(@Nonnull ChannelHandlerContext ctx) throws Exception {
          Duration playTimeout = HytaleServer.get().getConfig().getConnectionTimeouts().getPlayTimeout();
-         ChannelHandler quicHandler = ((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)new QuicServerCodecBuilder()
-                                       .sslContext(this.sslContext))
-                                    .tokenHandler(InsecureQuicTokenHandler.INSTANCE)
-                                    .maxIdleTimeout(playTimeout.toMillis(), TimeUnit.MILLISECONDS))
-                                 .ackDelayExponent(3L))
-                              .initialMaxData(524288L))
-                           .initialMaxStreamDataUnidirectional(0L))
-                        .initialMaxStreamsUnidirectional(0L))
-                     .initialMaxStreamDataBidirectionalLocal(131072L))
-                  .initialMaxStreamDataBidirectionalRemote(131072L))
-               .initialMaxStreamsBidirectional(1L))
+         ChannelHandler quicHandler = ((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)((QuicServerCodecBuilder)new QuicServerCodecBuilder()
+                                             .sslContext(this.sslContext))
+                                          .tokenHandler(InsecureQuicTokenHandler.INSTANCE)
+                                          .maxIdleTimeout(playTimeout.toMillis(), TimeUnit.MILLISECONDS))
+                                       .ackDelayExponent(3L))
+                                    .initialMaxData(524288L))
+                                 .initialMaxStreamDataUnidirectional(0L))
+                              .initialMaxStreamsUnidirectional(0L))
+                           .initialMaxStreamDataBidirectionalLocal(131072L))
+                        .initialMaxStreamDataBidirectionalRemote(131072L))
+                     .initialMaxStreamsBidirectional(1L))
+                  .discoverPmtu(true))
+               .congestionControlAlgorithm(QuicCongestionControlAlgorithm.BBR))
             .handler(
                new ChannelInboundHandlerAdapter() {
                   public boolean isSharable() {

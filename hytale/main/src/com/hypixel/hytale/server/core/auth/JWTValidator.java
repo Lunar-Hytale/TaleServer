@@ -23,6 +23,7 @@ import javax.annotation.Nullable;
 
 public class JWTValidator {
    private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
+   private static final long CLOCK_SKEW_SECONDS = 300L;
    private static final JWSAlgorithm SUPPORTED_ALGORITHM = JWSAlgorithm.EdDSA;
    private final SessionServiceClient sessionServiceClient;
    private final String expectedIssuer;
@@ -78,12 +79,14 @@ public class JWTValidator {
                   return null;
                } else {
                   long nowSeconds = Instant.now().getEpochSecond();
-                  long clockSkewSeconds = 60L;
-                  if (claims.expiresAt != null && nowSeconds >= claims.expiresAt + clockSkewSeconds) {
+                  if (claims.expiresAt != null && nowSeconds >= claims.expiresAt + 300L) {
                      LOGGER.at(Level.WARNING).log("Token expired (exp: %d, now: %d)", claims.expiresAt, nowSeconds);
                      return null;
-                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - clockSkewSeconds) {
+                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - 300L) {
                      LOGGER.at(Level.WARNING).log("Token not yet valid (nbf: %d, now: %d)", claims.notBefore, nowSeconds);
+                     return null;
+                  } else if (claims.issuedAt != null && claims.issuedAt > nowSeconds + 300L) {
+                     LOGGER.at(Level.WARNING).log("Token issued in the future (iat: %d, now: %d)", claims.issuedAt, nowSeconds);
                      return null;
                   } else if (!CertificateUtil.validateCertificateBinding(claims.certificateFingerprint, clientCert)) {
                      LOGGER.at(Level.WARNING).log("Certificate binding validation failed");
@@ -94,11 +97,11 @@ public class JWTValidator {
                   }
                }
             }
-         } catch (ParseException var12) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var12)).log("Failed to parse JWT");
+         } catch (ParseException var10) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var10)).log("Failed to parse JWT");
             return null;
-         } catch (Exception var13) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var13)).log("JWT validation error");
+         } catch (Exception var11) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var11)).log("JWT validation error");
             return null;
          }
       }
@@ -283,17 +286,16 @@ public class JWTValidator {
                   return null;
                } else {
                   long nowSeconds = Instant.now().getEpochSecond();
-                  long clockSkewSeconds = 60L;
                   if (claims.expiresAt == null) {
                      LOGGER.at(Level.WARNING).log("Identity token missing expiration claim");
                      return null;
-                  } else if (nowSeconds >= claims.expiresAt + clockSkewSeconds) {
+                  } else if (nowSeconds >= claims.expiresAt + 300L) {
                      LOGGER.at(Level.WARNING).log("Identity token expired (exp: %d, now: %d)", claims.expiresAt, nowSeconds);
                      return null;
-                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - clockSkewSeconds) {
+                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - 300L) {
                      LOGGER.at(Level.WARNING).log("Identity token not yet valid (nbf: %d, now: %d)", claims.notBefore, nowSeconds);
                      return null;
-                  } else if (claims.issuedAt != null && claims.issuedAt > nowSeconds + clockSkewSeconds) {
+                  } else if (claims.issuedAt != null && claims.issuedAt > nowSeconds + 300L) {
                      LOGGER.at(Level.WARNING).log("Identity token issued in the future (iat: %d, now: %d)", claims.issuedAt, nowSeconds);
                      return null;
                   } else if (claims.getSubjectAsUUID() == null) {
@@ -305,11 +307,11 @@ public class JWTValidator {
                   }
                }
             }
-         } catch (ParseException var10) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var10)).log("Failed to parse identity token");
+         } catch (ParseException var8) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var8)).log("Failed to parse identity token");
             return null;
-         } catch (Exception var11) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var11)).log("Identity token validation error");
+         } catch (Exception var9) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var9)).log("Identity token validation error");
             return null;
          }
       }
@@ -343,15 +345,17 @@ public class JWTValidator {
                   return null;
                } else {
                   long nowSeconds = Instant.now().getEpochSecond();
-                  long clockSkewSeconds = 60L;
                   if (claims.expiresAt == null) {
                      LOGGER.at(Level.WARNING).log("Session token missing expiration claim");
                      return null;
-                  } else if (nowSeconds >= claims.expiresAt + clockSkewSeconds) {
+                  } else if (nowSeconds >= claims.expiresAt + 300L) {
                      LOGGER.at(Level.WARNING).log("Session token expired (exp: %d, now: %d)", claims.expiresAt, nowSeconds);
                      return null;
-                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - clockSkewSeconds) {
+                  } else if (claims.notBefore != null && nowSeconds < claims.notBefore - 300L) {
                      LOGGER.at(Level.WARNING).log("Session token not yet valid (nbf: %d, now: %d)", claims.notBefore, nowSeconds);
+                     return null;
+                  } else if (claims.issuedAt != null && claims.issuedAt > nowSeconds + 300L) {
+                     LOGGER.at(Level.WARNING).log("Session token issued in the future (iat: %d, now: %d)", claims.issuedAt, nowSeconds);
                      return null;
                   } else {
                      LOGGER.at(Level.INFO).log("Session token validated successfully");
@@ -359,11 +363,11 @@ public class JWTValidator {
                   }
                }
             }
-         } catch (ParseException var10) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var10)).log("Failed to parse session token");
+         } catch (ParseException var8) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var8)).log("Failed to parse session token");
             return null;
-         } catch (Exception var11) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var11)).log("Session token validation error");
+         } catch (Exception var9) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var9)).log("Session token validation error");
             return null;
          }
       }
