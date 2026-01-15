@@ -293,9 +293,9 @@ public class HytaleServer {
             }
 
             this.sendSingleplayerSignal("-=|Enabled|0");
-         } catch (Throwable var4) {
-            ((HytaleLogger.Api)LOGGER.at(Level.SEVERE).withCause(var4)).log("Failed to boot HytaleServer!");
-            Throwable t = var4;
+         } catch (Throwable var5) {
+            ((HytaleLogger.Api)LOGGER.at(Level.SEVERE).withCause(var5)).log("Failed to boot HytaleServer!");
+            Throwable t = var5;
 
             while (t.getCause() != null) {
                t = t.getCause();
@@ -349,6 +349,11 @@ public class HytaleServer {
                FormatUtil.nanosToString(System.nanoTime() - this.bootStart)
             );
          LOGGER.at(Level.INFO).log("\u001b[0;32m===============================================================================================");
+         ServerAuthManager authManager = ServerAuthManager.getInstance();
+         if (!authManager.isSingleplayer() && authManager.getAuthMode() == ServerAuthManager.AuthMode.NONE) {
+            LOGGER.at(Level.WARNING).log("%sNo server tokens configured. Use /auth login to authenticate.", "\u001b[0;31m");
+         }
+
          this.sendSingleplayerSignal(">> Singleplayer Ready <<");
       }
    }
