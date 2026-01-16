@@ -56,10 +56,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Force correct wiki remote
+          git remote set-url origin "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+
           if git status --porcelain | grep .; then
             git add -A
             git commit -m "Publish wiki from repo (${GITHUB_SHA})"
-            git push
+            git push origin HEAD:master
           else
             echo "No wiki changes to publish."
           fi
