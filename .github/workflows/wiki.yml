@@ -30,15 +30,21 @@ jobs:
           path: wiki_repo
           fetch-depth: 0
 
+      - name: Debug folders
+        run: |
+          ls -la
+          ls -la wiki_repo || true
+          ls -la repo || true
+
       - name: Sync wiki content
         run: |
           set -e
-          rsync -av --delete ./repo/docs/wiki/ ./wiki_repo/
+          rsync -av repo/docs/wiki/ wiki_repo/
 
       - name: Commit and push changes
+        working-directory: wiki_repo
         run: |
           set -e
-          cd wiki_repo
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
