@@ -3,6 +3,6 @@
 
 ---
 
-**[Home](Home.md)** | [Assets](Assets.md) | [Events](Events.md) | [World](World.md) | [Commands](Commands.md)
+**[Home](https://github.com/Savag3life/TaleServer/wiki/Home.md)** | [Assets](https://github.com/Savag3life/TaleServer/wiki/Assets.md) | [Events](https://github.com/Savag3life/TaleServer/wiki/Events.md) | [World](World.md) | [Commands](https://github.com/Savag3life/TaleServer/wiki/Commands.md)
 
 ---
