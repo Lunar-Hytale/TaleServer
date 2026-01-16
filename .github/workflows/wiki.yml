@@ -4,8 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "docs/wiki/**"
-      - ".github/workflows/wiki.yml"
+      - "wiki/**"
   workflow_dispatch: {}
 
 permissions:
@@ -25,12 +24,12 @@ jobs:
         run: |
           set -e
           rm -rf wiki_repo
-          git clone "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki_repo
+          git clone "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/Savag3life/TaleServer.wiki.git" wiki_repo
 
       - name: Sync wiki content
         run: |
           set -e
-          rsync -av --delete ./docs/wiki/ ./wiki_repo/
+          rsync -av --delete ./wiki/ ./wiki_repo/
 
       - name: Commit and push changes
         run: |
@@ -43,7 +42,7 @@ jobs:
           if git status --porcelain | grep .; then
             git add -A
             git commit -m "Publish wiki from repo (${GITHUB_SHA})"
-            git push origin master
+            git push origin HEAD:master
           else
             echo "No wiki changes to publish."
           fi
