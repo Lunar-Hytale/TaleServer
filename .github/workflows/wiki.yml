@@ -4,7 +4,8 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "wiki/**"
+      - "docs/wiki/**"
+      - ".github/workflows/wiki.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -29,7 +30,7 @@ jobs:
       - name: Sync wiki content
         run: |
           set -e
-          rsync -av --delete ./wiki/ ./wiki_repo/
+          rsync -av --delete ./docs/wiki/ ./wiki_repo/
 
       - name: Commit and push changes
         run: |
