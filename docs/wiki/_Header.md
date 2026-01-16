@@ -3,6 +3,6 @@
 
 ---
 
-**[Home](Home.md)** | [Events](Events.md) | [World](World.md) | [Commands](Commands.md)
+**[Home](Home.md)** | [Assets](Assets.md) | [Events](Events.md) | [World](World.md) | [Commands](Commands.md)
 
 ---

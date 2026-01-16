@@ -15,6 +15,7 @@ These docs were created by analyzing the decompiled server source code. They aim
 
 | Document | Description |
 |----------|-------------|
+| [Assets.md](Assets.md) | Asset system architecture, creating custom assets, loading, validation, hot-reloading |
 | [Events.md](Events.md) | Event system architecture, registration patterns, ECS integration |
 | [World.md](World.md) | Universe, World, and Instance APIs with safety/performance notes |
 | [Commands.md](Commands.md) | Chat commands, how to use, and internal structure |

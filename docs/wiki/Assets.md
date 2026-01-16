@@ -722,7 +722,6 @@ if (!result.getFailedToLoadPaths().isEmpty()) {
 
 ## See Also
 
-- [Items System](Items.md)
-- [Blocks System](Blocks.md)
-- [Codec System](Codecs.md)
-- [Event System](Events.md)
+- [Event System](Events.md) - Event bus architecture and registration patterns
+- [World System](World.md) - Universe, World, and Instance APIs
+- [Commands](Commands.md) - Chat commands and internal structure
