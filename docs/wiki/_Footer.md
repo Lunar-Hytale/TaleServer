@@ -2,4 +2,4 @@
 
 *AI-generated documentation for [HytaleServer](https://github.com/Savag3life/TaleServer). Not official — verify against source code.*
 
-[Back to Home](https://github.com/Savag3life/TaleServer/wiki/Home)
+[Home](https://github.com/Savag3life/TaleServer/wiki/Home) | [Assets](https://github.com/Savag3life/TaleServer/wiki/Assets) | [Events](https://github.com/Savag3life/TaleServer/wiki/Events) | [Items](https://github.com/Savag3life/TaleServer/wiki/Items) | [UI](https://github.com/Savag3life/TaleServer/wiki/Ui) | [World](https://github.com/Savag3life/TaleServer/wiki/World) | [Commands](https://github.com/Savag3life/TaleServer/wiki/Commands)

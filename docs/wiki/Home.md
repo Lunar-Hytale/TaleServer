@@ -17,6 +17,8 @@ These docs were created by analyzing the decompiled server source code. They aim
 |----------|-------------|
 | [Assets.md](https://github.com/Savag3life/TaleServer/wiki/Assets) | Asset system architecture, creating custom assets, loading, validation, hot-reloading |
 | [Events.md](https://github.com/Savag3life/TaleServer/wiki/Events) | Event system architecture, registration patterns, ECS integration |
+| [Items.md](https://github.com/Savag3life/TaleServer/wiki/Items) | Item system, ItemStacks, containers, weapons, armor, tools, metadata, and drop tables |
+| [Ui.md](https://github.com/Savag3life/TaleServer/wiki/Ui) | UI system, custom pages, interactive forms, HUD elements, and entity UI components |
 | [World.md](https://github.com/Savag3life/TaleServer/wiki/World) | Universe, World, and Instance APIs with safety/performance notes |
 | [Commands.md](https://github.com/Savag3life/TaleServer/wiki/Commands) | Chat commands, how to use, and internal structure |
 
