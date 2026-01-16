@@ -3,6 +3,6 @@
 
 ---
 
-**[Home](https://github.com/Savag3life/TaleServer/wiki/Home.md)** | [Assets](https://github.com/Savag3life/TaleServer/wiki/Assets.md) | [Events](https://github.com/Savag3life/TaleServer/wiki/Events.md) | [World](World.md) | [Commands](https://github.com/Savag3life/TaleServer/wiki/Commands.md)
+**[Home](https://github.com/Savag3life/TaleServer/wiki/Home)** | [Assets](https://github.com/Savag3life/TaleServer/wiki/Assets) | [Events](https://github.com/Savag3life/TaleServer/wiki/Events) | [World](World) | [Commands](https://github.com/Savag3life/TaleServer/wiki/Commands)
 
 ---

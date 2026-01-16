@@ -717,11 +717,3 @@ if (!result.getFailedToLoadPaths().isEmpty()) {
     logger.warning("Failed files: " + result.getFailedToLoadPaths());
 }
 ```
-
----
-
-## See Also
-
-- [Event System](Events.md) - Event bus architecture and registration patterns
-- [World System](World.md) - Universe, World, and Instance APIs
-- [Commands](Commands.md) - Chat commands and internal structure
