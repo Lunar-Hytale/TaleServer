@@ -1,0 +1,65 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/wiki.yml"
+
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: true
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone wiki repo
+        run: |
+          set -e
+          git clone "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Sync markdown pages to wiki
+        run: |
+          set -e
+
+          # Clear wiki repo contents (keeps .git only)
+          find wiki -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
+
+          # Copy in docs/wiki to wiki root
+          rsync -av --delete "docs/wiki/" "wiki/"
+
+          # GitHub Wiki requires Home.md for main landing page
+          if [ ! -f "wiki/Home.md" ]; then
+            echo "ERROR: docs/wiki/Home.md is missing. The wiki needs Home.md"
+            exit 1
+          fi
+
+      - name: Commit and push changes
+        run: |
+          set -e
+          cd wiki
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git status --porcelain | grep .; then
+            git add -A
+            git commit -m "Publish wiki from repo (${GITHUB_SHA})"
+            git push
+          else
+            echo "No wiki changes to publish."
+          fi
