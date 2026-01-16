@@ -5,7 +5,6 @@ on:
     branches: ["main"]
     paths:
       - "docs/wiki/**"
-      - ".github/workflows/wiki.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -20,17 +19,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: repo
 
-      - name: Clone wiki repo (authenticated)
-        run: |
-          set -e
-          rm -rf wiki_repo
-          git clone "https://x-access-token:${{ secrets.WIKI_TOKEN }}@github.com/Savag3life/TaleServer.wiki.git" wiki_repo
+      - name: Checkout wiki
+        uses: actions/checkout@v4
+        with:
+          repository: Savag3life/TaleServer.wiki
+          token: ${{ secrets.WIKI_TOKEN }}
+          path: wiki_repo
+          fetch-depth: 0
 
       - name: Sync wiki content
         run: |
           set -e
-          rsync -av --delete ./docs/wiki/ ./wiki_repo/
+          rsync -av --delete ./repo/docs/wiki/ ./wiki_repo/
 
       - name: Commit and push changes
         run: |
