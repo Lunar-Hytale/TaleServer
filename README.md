@@ -6,6 +6,9 @@ This project extracts and decompiles to source the hytale server package for res
 
 Source files located in `/hytale/main/src/com/hypixel/hytale/`
 
+## Wiki
+Using various AI agents we've compiled a small unofficial wiki for some of the games core features. This includes things like the assets system, event loop, and universe structure. [You can find it here.](https://github.com/Savag3life/TaleServer/wiki)
+
 ## Points of interest
 - [Some of the games core features are implemented as "modules" *aka plugins* here.](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/modules)
 - [Game Events](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/event/events)
