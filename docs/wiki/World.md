@@ -1,6 +1,3 @@
-> [!CAUTION]
-> AI-generated content based on the server source files. Not everything here is guaranteed accurate — treat it as a starting point until Hytale's official docs are available.
-
 # Universe, World & Instance API Overview
 
 ## 1. Architectural Hierarchy
@@ -30,7 +27,7 @@ Universe (Singleton)
 
 ## 2. Universe
 
-Located in [server/core/universe/Universe.java](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/Universe.java)
+Located in [server/core/universe/Universe.java](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/Universe.java)
 
 The Universe is the **singleton root container** that manages all worlds and players. It extends `JavaPlugin` and provides thread-safe access to game state.
 
@@ -90,7 +87,7 @@ Universe universe = Universe.get();
 
 ## 3. World
 
-Located in [server/core/universe/world/World.java](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/world/World.java)
+Located in [server/core/universe/world/World.java](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/world/World.java)
 
 Each World runs on its own **dedicated tick thread** and acts as an `Executor` for task scheduling. Worlds are isolated containers with their own chunk storage, entity store, and configuration.
 
@@ -189,7 +186,7 @@ Each World runs on its own **dedicated tick thread** and acts as an `Executor` f
 
 ## 4. WorldConfig
 
-Located in [server/core/universe/world/WorldConfig.java](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/world/WorldConfig.java)
+Located in [server/core/universe/world/WorldConfig.java](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/universe/world/WorldConfig.java)
 
 Persistent configuration for a world, serialized to disk.
 
@@ -238,7 +235,7 @@ Persistent configuration for a world, serialized to disk.
 
 ## 5. Instance System
 
-Located in [builtin/instances/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/)
+Located in [builtin/instances/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/)
 
 Instances are **ephemeral world copies** created from templates. They have automatic lifecycle management and return-point handling.
 
@@ -269,7 +266,7 @@ InstancesPlugin instances = InstancesPlugin.get();
 
 ### InstanceWorldConfig
 
-Located in [builtin/instances/config/InstanceWorldConfig.java](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/config/InstanceWorldConfig.java)
+Located in [builtin/instances/config/InstanceWorldConfig.java](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/config/InstanceWorldConfig.java)
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
@@ -284,7 +281,7 @@ Located in [builtin/instances/config/InstanceWorldConfig.java](https://github.co
 
 ### Removal Conditions
 
-Located in [builtin/instances/removal/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/removal/)
+Located in [builtin/instances/removal/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/builtin/instances/removal/)
 
 | Condition | Trigger |
 |-----------|---------|

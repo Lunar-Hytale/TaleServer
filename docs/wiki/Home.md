@@ -1,6 +1,6 @@
 # HytaleServer AI Documentation
 
-This directory contains AI-generated documentation for the [HytaleServer](https://github.com/Savag3life/HytaleServer) project — a community-driven effort to understand and document the Hytale dedicated server.
+This directory contains AI-generated documentation for the [HytaleServer](https://github.com/Savag3life/TaleServer) project — a community-driven effort to understand and document the Hytale dedicated server.
 
 ## What is this?
 
@@ -17,6 +17,7 @@ These docs were created by analyzing the decompiled server source code. They aim
 |----------|-------------|
 | [Events.md](Events.md) | Event system architecture, registration patterns, ECS integration |
 | [World.md](World.md) | Universe, World, and Instance APIs with safety/performance notes |
+| [Commands.md](Commands.md) | Chat commands, how to use, and internal structure |
 
 ## Accuracy Disclaimer
 
@@ -30,4 +31,4 @@ Always verify critical details against the actual source code.
 
 ## Contributing
 
-Found an error or want to improve these docs? The source repository is at [github.com/Savag3life/HytaleServer](https://github.com/Savag3life/HytaleServer).
+Found an error or want to improve these docs? The source repository is at [github.com/Savag3life/TaleServer](https://github.com/Savag3life/TaleServer).

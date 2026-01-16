@@ -6,7 +6,7 @@ The codebase uses a **fluent, type-safe command system** built on inheritance pa
 
 ## 1. Core Command Classes
 
-Located in [server/core/command/system/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/)
+Located in [server/core/command/system/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/)
 
 | Class | Purpose |
 |-------|---------|
@@ -21,7 +21,7 @@ Located in [server/core/command/system/](https://github.com/Savag3life/HytaleSer
 
 ## 2. Command Base Class Hierarchy
 
-Located in [basecommands/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/basecommands/)
+Located in [basecommands/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/basecommands/)
 
 ```
 AbstractCommand (base)
@@ -163,7 +163,7 @@ registerCommand(AbstractCommand)
 
 ## 4. Argument System
 
-Located in [arguments/system/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/arguments/system/)
+Located in [arguments/system/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/arguments/system/)
 
 ### Argument Types Overview
 
@@ -275,7 +275,7 @@ this.forceArg.setPermission("mycommand.force");
 
 ## 5. Built-in Argument Types
 
-Located in [ArgTypes.java](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/arguments/types/ArgTypes.java)
+Located in [ArgTypes.java](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/arguments/types/ArgTypes.java)
 
 ### Primitive Types
 
@@ -661,7 +661,7 @@ public class MyPlugin extends PluginBase {
 
 ## 11. Built-in Commands Reference
 
-The server includes many built-in commands registered in [CommandManager](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/CommandManager.java):
+The server includes many built-in commands registered in [CommandManager](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/command/system/CommandManager.java):
 
 ### Player Commands
 - `gamemode` / `gm` - Change game mode

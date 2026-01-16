@@ -2,7 +2,7 @@
 
 ## 1. Core Event Interfaces
 
-Located in [com/hypixel/hytale/event/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/event/)
+Located in [com/hypixel/hytale/event/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/event/)
 
 | Interface | Purpose |
 |-----------|---------|
@@ -18,7 +18,7 @@ Located in [com/hypixel/hytale/event/](https://github.com/Savag3life/HytaleServe
 
 ### ECS Events (Entity Component System)
 
-Located in [component/system/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/component/system/)
+Located in [component/system/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/component/system/)
 
 ```
 EcsEvent (base)
@@ -38,7 +38,7 @@ EcsEvent (base)
 
 ### Player Events
 
-Located in [server/core/event/events/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/event/events/)
+Located in [server/core/event/events/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/server/core/event/events/)
 
 ```
 PlayerEvent<KeyType> implements IEvent<KeyType>
@@ -72,7 +72,7 @@ ShutdownEvent implements IEvent<Void>
 
 ### Asset Store Events
 
-Located in [assetstore/event/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/assetstore/event/)
+Located in [assetstore/event/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/assetstore/event/)
 
 ```
 AssetStoreEvent<KeyType>
@@ -156,7 +156,7 @@ eventBus.dispatchForAsync(EventClass.class, key)
 
 **Queries are part of the ECS (Entity Component System)**, not the event system directly. They filter which entities a system should operate on.
 
-Located in [component/query/](https://github.com/Savag3life/HytaleServer/tree/main/hytale/main/src/com/hypixel/hytale/component/query/)
+Located in [component/query/](https://github.com/Savag3life/TaleServer/tree/main/hytale/main/src/com/hypixel/hytale/component/query/)
 
 ### Query Types
 
