@@ -33,6 +33,8 @@ public class GiveCommand extends AbstractPlayerCommand {
    @Nonnull
    private final DefaultArg<Integer> quantityArg = this.withDefaultArg("quantity", "server.commands.give.quantity.desc", ArgTypes.INTEGER, 1, "1");
    @Nonnull
+   private final OptionalArg<Double> durabilityArg = this.withOptionalArg("durability", "server.commands.give.durability.desc", ArgTypes.DOUBLE);
+   @Nonnull
    private final OptionalArg<String> metadataArg = this.withOptionalArg("metadata", "server.commands.give.metadata.desc", ArgTypes.STRING);
 
    public GiveCommand() {
@@ -52,19 +54,25 @@ public class GiveCommand extends AbstractPlayerCommand {
 
       Item item = this.itemArg.get(context);
       Integer quantity = this.quantityArg.get(context);
+      double durability = Double.MAX_VALUE;
+      if (this.durabilityArg.provided(context)) {
+         durability = this.durabilityArg.get(context);
+      }
+
       BsonDocument metadata = null;
       if (this.metadataArg.provided(context)) {
          String metadataStr = this.metadataArg.get(context);
 
          try {
             metadata = BsonDocument.parse(metadataStr);
-         } catch (Exception var13) {
-            context.sendMessage(MESSAGE_COMMANDS_GIVE_INVALID_METADATA.param("error", var13.getMessage()));
+         } catch (Exception var16) {
+            context.sendMessage(MESSAGE_COMMANDS_GIVE_INVALID_METADATA.param("error", var16.getMessage()));
             return;
          }
       }
 
-      ItemStackTransaction transaction = playerComponent.getInventory().getCombinedHotbarFirst().addItemStack(new ItemStack(item.getId(), quantity, metadata));
+      ItemStack stack = new ItemStack(item.getId(), quantity, metadata).withDurability(durability);
+      ItemStackTransaction transaction = playerComponent.getInventory().getCombinedHotbarFirst().addItemStack(stack);
       ItemStack remainder = transaction.getRemainder();
       Message itemNameMessage = Message.translation(item.getTranslationKey());
       if (remainder != null && !remainder.isEmpty()) {
@@ -89,6 +97,8 @@ public class GiveCommand extends AbstractPlayerCommand {
       private final RequiredArg<Item> itemArg = this.withRequiredArg("item", "server.commands.give.item.desc", ArgTypes.ITEM_ASSET);
       @Nonnull
       private final DefaultArg<Integer> quantityArg = this.withDefaultArg("quantity", "server.commands.give.quantity.desc", ArgTypes.INTEGER, 1, "1");
+      @Nonnull
+      private final OptionalArg<Double> durabilityArg = this.withOptionalArg("durability", "server.commands.give.durability.desc", ArgTypes.DOUBLE);
       @Nonnull
       private final OptionalArg<String> metadataArg = this.withOptionalArg("metadata", "server.commands.give.metadata.desc", ArgTypes.STRING);
 
@@ -116,21 +126,25 @@ public class GiveCommand extends AbstractPlayerCommand {
 
                      Item item = this.itemArg.get(context);
                      Integer quantity = this.quantityArg.get(context);
+                     double durability = Double.MAX_VALUE;
+                     if (this.durabilityArg.provided(context)) {
+                        durability = this.durabilityArg.get(context);
+                     }
+
                      BsonDocument metadata = null;
                      if (this.metadataArg.provided(context)) {
                         String metadataStr = this.metadataArg.get(context);
 
                         try {
                            metadata = BsonDocument.parse(metadataStr);
-                        } catch (Exception var13) {
-                           context.sendMessage(MESSAGE_COMMANDS_GIVE_INVALID_METADATA.param("error", var13.getMessage()));
+                        } catch (Exception var16) {
+                           context.sendMessage(MESSAGE_COMMANDS_GIVE_INVALID_METADATA.param("error", var16.getMessage()));
                            return;
                         }
                      }
 
-                     ItemStackTransaction transaction = playerComponent.getInventory()
-                        .getCombinedHotbarFirst()
-                        .addItemStack(new ItemStack(item.getId(), quantity, metadata));
+                     ItemStack stack = new ItemStack(item.getId(), quantity, metadata).withDurability(durability);
+                     ItemStackTransaction transaction = playerComponent.getInventory().getCombinedHotbarFirst().addItemStack(stack);
                      ItemStack remainder = transaction.getRemainder();
                      Message itemNameMessage = Message.translation(item.getTranslationKey());
                      if (remainder != null && !remainder.isEmpty()) {

@@ -49,7 +49,6 @@ import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 public class SelectInteraction extends SimpleInteraction {
    public static boolean SHOW_VISUAL_DEBUG;
@@ -127,7 +126,7 @@ public class SelectInteraction extends SimpleInteraction {
 
    @Override
    protected void tick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       Ref<EntityStore> ref = context.getEntity();
       CommandBuffer<EntityStore> commandBuffer = context.getCommandBuffer();
@@ -265,7 +264,7 @@ public class SelectInteraction extends SimpleInteraction {
 
    @Override
    protected void simulateTick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @NonNullDecl InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
    }
 

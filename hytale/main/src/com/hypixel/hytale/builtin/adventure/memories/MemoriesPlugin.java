@@ -10,6 +10,8 @@ import com.hypixel.hytale.builtin.adventure.memories.memories.npc.NPCMemory;
 import com.hypixel.hytale.builtin.adventure.memories.memories.npc.NPCMemoryProvider;
 import com.hypixel.hytale.builtin.adventure.memories.page.MemoriesPage;
 import com.hypixel.hytale.builtin.adventure.memories.page.MemoriesPageSupplier;
+import com.hypixel.hytale.builtin.adventure.memories.page.MemoriesUnlockedPage;
+import com.hypixel.hytale.builtin.adventure.memories.page.MemoriesUnlockedPageSuplier;
 import com.hypixel.hytale.builtin.adventure.memories.temple.ForgottenTempleConfig;
 import com.hypixel.hytale.builtin.adventure.memories.temple.TempleRespawnPlayersSystem;
 import com.hypixel.hytale.builtin.adventure.memories.window.MemoriesWindow;
@@ -90,6 +92,7 @@ public class MemoriesPlugin extends JavaPlugin {
       ComponentRegistryProxy<EntityStore> entityStoreRegistry = this.getEntityStoreRegistry();
       this.getCommandRegistry().registerCommand(new MemoriesCommand());
       OpenCustomUIInteraction.registerCustomPageSupplier(this, MemoriesPage.class, "Memories", new MemoriesPageSupplier());
+      OpenCustomUIInteraction.registerCustomPageSupplier(this, MemoriesUnlockedPage.class, "MemoriesUnlocked", new MemoriesUnlockedPageSuplier());
       Window.CLIENT_REQUESTABLE_WINDOW_TYPES.put(WindowType.Memories, MemoriesWindow::new);
       this.playerMemoriesComponentType = entityStoreRegistry.registerComponent(PlayerMemories.class, "PlayerMemories", PlayerMemories.CODEC);
       NPCMemoryProvider npcMemoryProvider = new NPCMemoryProvider();
@@ -129,14 +132,16 @@ public class MemoriesPlugin extends JavaPlugin {
 
    @Override
    protected void shutdown() {
-      this.recordedMemories.lock.readLock().lock();
+      if (this.hasInitializedMemories) {
+         this.recordedMemories.lock.readLock().lock();
 
-      try {
-         BsonUtil.writeSync(Constants.UNIVERSE_PATH.resolve("memories.json"), MemoriesPlugin.RecordedMemories.CODEC, this.recordedMemories, this.getLogger());
-      } catch (IOException var5) {
-         throw new RuntimeException(var5);
-      } finally {
-         this.recordedMemories.lock.readLock().unlock();
+         try {
+            BsonUtil.writeSync(Constants.UNIVERSE_PATH.resolve("memories.json"), MemoriesPlugin.RecordedMemories.CODEC, this.recordedMemories, this.getLogger());
+         } catch (IOException var5) {
+            throw new RuntimeException(var5);
+         } finally {
+            this.recordedMemories.lock.readLock().unlock();
+         }
       }
    }
 
@@ -177,27 +182,13 @@ public class MemoriesPlugin extends JavaPlugin {
          int recordedMemoriesCount = this.getRecordedMemories().size();
          int[] memoriesAmountPerLevel = config.getMemoriesAmountPerLevel();
 
-         for (int i = 0; i < memoriesAmountPerLevel.length && recordedMemoriesCount >= memoriesAmountPerLevel[i]; i++) {
-            memoriesLevel += i + 1;
+         for (int i = memoriesAmountPerLevel.length - 1; i >= 0; i--) {
+            if (recordedMemoriesCount >= memoriesAmountPerLevel[i]) {
+               return i + 2;
+            }
          }
 
          return memoriesLevel;
-      }
-   }
-
-   public int getMemoriesForNextLevel(@Nonnull GameplayConfig gameplayConfig) {
-      MemoriesGameplayConfig memoriesConfig = MemoriesGameplayConfig.get(gameplayConfig);
-      if (memoriesConfig == null) {
-         return -1;
-      } else {
-         int memoriesLevel = this.getMemoriesLevel(gameplayConfig);
-         int[] memoriesAmountPerLevel = memoriesConfig.getMemoriesAmountPerLevel();
-         if (memoriesLevel >= memoriesAmountPerLevel.length) {
-            return -1;
-         } else {
-            int recordedMemoriesCount = this.getRecordedMemories().size();
-            return memoriesAmountPerLevel[memoriesLevel] - recordedMemoriesCount;
-         }
       }
    }
 
@@ -272,6 +263,39 @@ public class MemoriesPlugin extends JavaPlugin {
       } finally {
          this.recordedMemories.lock.writeLock().unlock();
       }
+   }
+
+   public int setRecordedMemoriesCount(int count) {
+      if (count < 0) {
+         count = 0;
+      }
+
+      this.recordedMemories.lock.writeLock().lock();
+
+      int var12;
+      try {
+         this.recordedMemories.memories.clear();
+         List<Memory> allAvailableMemories = new ObjectArrayList();
+
+         for (Entry<String, Set<Memory>> entry : this.allMemories.entrySet()) {
+            allAvailableMemories.addAll(entry.getValue());
+         }
+
+         int actualCount = Math.min(count, allAvailableMemories.size());
+
+         for (int i = 0; i < actualCount; i++) {
+            this.recordedMemories.memories.add(allAvailableMemories.get(i));
+         }
+
+         BsonUtil.writeSync(Constants.UNIVERSE_PATH.resolve("memories.json"), MemoriesPlugin.RecordedMemories.CODEC, this.recordedMemories, this.getLogger());
+         var12 = actualCount;
+      } catch (IOException var8) {
+         throw new RuntimeException(var8);
+      } finally {
+         this.recordedMemories.lock.writeLock().unlock();
+      }
+
+      return var12;
    }
 
    public static class MemoriesPluginConfig {

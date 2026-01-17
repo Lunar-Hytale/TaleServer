@@ -466,7 +466,7 @@ public class PrefabEditSessionManager {
                               targetWorld
                            );
                            CompletableFuture.runAsync(() -> {
-                              Teleport teleportComponent = new Teleport(targetWorld, new Transform(spawnPoint));
+                              Teleport teleportComponent = Teleport.createForPlayer(targetWorld, new Transform(spawnPoint));
                               componentAccessor.putComponent(ref, Teleport.getComponentType(), teleportComponent);
                            }, sourceWorld);
                         }
@@ -934,11 +934,8 @@ public class PrefabEditSessionManager {
             returnLocation = returnWorld.getWorldConfig().getSpawnProvider().getSpawnPoint(ref, componentAccessor);
          }
 
-         World finalReturnWorld = returnWorld;
-         Transform finalReturnLocation = returnLocation;
-         return CompletableFuture.runAsync(
-               () -> componentAccessor.putComponent(ref, Teleport.getComponentType(), new Teleport(finalReturnWorld, finalReturnLocation)), world
-            )
+         Teleport teleportComponent = Teleport.createForPlayer(returnWorld, returnLocation);
+         return CompletableFuture.runAsync(() -> componentAccessor.putComponent(ref, Teleport.getComponentType(), teleportComponent), world)
             .thenRunAsync(() -> {
                World worldToRemove = Universe.get().getWorld(prefabEditSession.getWorldName());
                if (worldToRemove != null) {

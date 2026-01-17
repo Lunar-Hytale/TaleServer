@@ -86,6 +86,7 @@ public class InteractionManager implements Component<EntityStore> {
    private final boolean[] globalTimeShiftDirty = new boolean[InteractionType.VALUES.length];
    private boolean timeShiftsDirty;
    private final ObjectList<SyncInteractionChain> syncPackets = new ObjectArrayList();
+   private long currentTime = 1L;
    @Nonnull
    private final ObjectList<InteractionChain> chainStartQueue = new ObjectArrayList();
    @Nonnull
@@ -139,6 +140,7 @@ public class InteractionManager implements Component<EntityStore> {
    }
 
    public void tick(@Nonnull Ref<EntityStore> ref, @Nonnull CommandBuffer<EntityStore> commandBuffer, float dt) {
+      this.currentTime = this.currentTime + commandBuffer.getExternalData().getWorld().getTickStepNanos();
       this.commandBuffer = commandBuffer;
       this.clearAllGlobalTimeShift(dt);
       this.cooldownHandler.tick(dt);
@@ -242,10 +244,10 @@ public class InteractionManager implements Component<EntityStore> {
                if (!this.waitingForClient(ref)) {
                   long queuedTime;
                   if (this.packetQueueTime == 0L) {
-                     this.packetQueueTime = System.nanoTime();
+                     this.packetQueueTime = this.currentTime;
                      queuedTime = 0L;
                   } else {
-                     queuedTime = System.nanoTime() - this.packetQueueTime;
+                     queuedTime = this.currentTime - this.packetQueueTime;
                   }
 
                   HytaleLogger.Api context = LOGGER.at(Level.FINE);
@@ -343,10 +345,10 @@ public class InteractionManager implements Component<EntityStore> {
             if (chain.requiresClient() && chain.getClientState() == InteractionState.NotFinished) {
                if (!this.waitingForClient(ref)) {
                   if (chain.getWaitingForClientFinished() == 0L) {
-                     chain.setWaitingForClientFinished(System.nanoTime());
+                     chain.setWaitingForClientFinished(this.currentTime);
                   }
 
-                  long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - chain.getWaitingForClientFinished());
+                  long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - chain.getWaitingForClientFinished());
                   HytaleLogger.Api context = LOGGER.at(Level.FINE);
                   if (context.isEnabled()) {
                      context.log("Server finished chain but client hasn't! %d, %s, %s", chain.getChainId(), chain, waitMillis);
@@ -404,10 +406,10 @@ public class InteractionManager implements Component<EntityStore> {
                }
             } else if (chain.getClientState() != InteractionState.NotFinished && !this.waitingForClient(ref)) {
                if (chain.getWaitingForServerFinished() == 0L) {
-                  chain.setWaitingForServerFinished(System.nanoTime());
+                  chain.setWaitingForServerFinished(this.currentTime);
                }
 
-               long waitMillisx = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - chain.getWaitingForServerFinished());
+               long waitMillisx = TimeUnit.NANOSECONDS.toMillis(this.currentTime - chain.getWaitingForServerFinished());
                HytaleLogger.Api contextxx = LOGGER.at(Level.FINE);
                if (contextxx.isEnabled()) {
                   contextxx.log("Client finished chain but server hasn't! %d, %s, %s", chain.getChainId(), chain, waitMillisx);
@@ -445,7 +447,7 @@ public class InteractionManager implements Component<EntityStore> {
                try {
                   context.initEntry(chain, entry, this.entity);
                   TimeResource timeResource = this.commandBuffer.getResource(TimeResource.getResourceType());
-                  operation.handle(ref, false, entry.getTimeInSeconds(System.nanoTime()) * timeResource.getTimeDilationModifier(), chain.getType(), context);
+                  operation.handle(ref, false, entry.getTimeInSeconds(this.currentTime) * timeResource.getTimeDilationModifier(), chain.getType(), context);
                } finally {
                   context.deinitEntry(chain, entry, this.entity);
                }
@@ -481,7 +483,7 @@ public class InteractionManager implements Component<EntityStore> {
          while (true) {
             Operation simOp = !this.hasRemoteClient ? root.getOperation(chain.getSimulatedOperationCounter()) : null;
             WaitForDataFrom simWaitFrom = simOp != null ? simOp.getWaitForDataFrom() : null;
-            long tickTime = System.nanoTime();
+            long tickTime = this.currentTime;
             if (!this.hasRemoteClient && simWaitFrom != WaitForDataFrom.Server) {
                this.simulationTick(ref, chain, tickTime);
             }
@@ -622,10 +624,10 @@ public class InteractionManager implements Component<EntityStore> {
          return null;
       } else {
          if (entry.getWaitingForSyncData() == 0L) {
-            entry.setWaitingForSyncData(System.nanoTime());
+            entry.setWaitingForSyncData(this.currentTime);
          }
 
-         long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - entry.getWaitingForSyncData());
+         long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - entry.getWaitingForSyncData());
          HytaleLogger.Api contextx = LOGGER.at(Level.FINE);
          if (contextx.isEnabled()) {
             contextx.log("Wait for interaction clientData: %d, %s, %s", chain.getOperationIndex(), entry, waitMillis);
@@ -670,10 +672,10 @@ public class InteractionManager implements Component<EntityStore> {
          }
       } else if (entry.getClientState() != null && entry.getClientState().state != InteractionState.NotFinished && !this.waitingForClient(ref)) {
          if (entry.getWaitingForServerFinished() == 0L) {
-            entry.setWaitingForServerFinished(System.nanoTime());
+            entry.setWaitingForServerFinished(this.currentTime);
          }
 
-         long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - entry.getWaitingForServerFinished());
+         long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - entry.getWaitingForServerFinished());
          HytaleLogger.Api context = LOGGER.at(Level.FINE);
          if (context.isEnabled()) {
             context.log("Client finished interaction but server hasn't! %s, %d, %s, %s", entry.getClientState().state, entry.getIndex(), entry, waitMillis);
@@ -774,7 +776,7 @@ public class InteractionManager implements Component<EntityStore> {
                Ref<EntityStore> proxyTarget = world.getEntityStore().getRefFromUUID(proxyId);
                if (proxyTarget == null) {
                   if (this.packetQueueTime != 0L
-                     && System.nanoTime() - this.packetQueueTime > TimeUnit.MILLISECONDS.toNanos(this.getOperationTimeoutThreshold()) / 2L) {
+                     && this.currentTime - this.packetQueueTime > TimeUnit.MILLISECONDS.toNanos(this.getOperationTimeoutThreshold()) / 2L) {
                      HytaleLogger.Api ctx = LOGGER.at(Level.FINE);
                      if (ctx.isEnabled()) {
                         ctx.log("Proxy entity never spawned");
@@ -955,7 +957,7 @@ public class InteractionManager implements Component<EntityStore> {
                            "%d, %d: Time (Sync) - Server: %s vs Client: %s",
                            packet.chainId,
                            index,
-                           interaction.getTimeInSeconds(System.nanoTime()) * tickTimeDilation,
+                           interaction.getTimeInSeconds(this.currentTime) * tickTimeDilation,
                            interaction.getClientState().progress
                         );
                      }

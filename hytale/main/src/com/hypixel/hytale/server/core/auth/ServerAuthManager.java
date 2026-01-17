@@ -26,7 +26,6 @@ import java.util.logging.Level;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import joptsimple.OptionSet;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 public class ServerAuthManager {
    private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
@@ -37,11 +36,14 @@ public class ServerAuthManager {
    private final AtomicReference<SessionServiceClient.GameSessionResponse> gameSession = new AtomicReference<>();
    private final AtomicReference<IAuthCredentialStore> credentialStore = new AtomicReference<>(new DefaultAuthCredentialStore());
    private final Map<UUID, SessionServiceClient.GameProfile> availableProfiles = new ConcurrentHashMap<>();
+   private volatile SessionServiceClient.GameProfile[] pendingProfiles;
+   private volatile ServerAuthManager.AuthMode pendingAuthMode;
    private final AtomicReference<X509Certificate> serverCertificate = new AtomicReference<>();
    private final UUID serverSessionId = UUID.randomUUID();
    private volatile boolean isSingleplayer;
    private OAuthClient oauthClient;
    private volatile SessionServiceClient sessionServiceClient;
+   private volatile ProfileServiceClient profileServiceClient;
    private final ScheduledExecutorService refreshScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
       Thread t = new Thread(r, "TokenRefresh");
       t.setDaemon(true);
@@ -49,10 +51,33 @@ public class ServerAuthManager {
    });
    private ScheduledFuture<?> refreshTask;
    private Runnable cancelActiveFlow;
-   private volatile SessionServiceClient.GameProfile[] pendingProfiles;
-   private volatile ServerAuthManager.AuthMode pendingAuthMode;
 
    private ServerAuthManager() {
+   }
+
+   public static ServerAuthManager getInstance() {
+      if (instance == null) {
+         synchronized (ServerAuthManager.class) {
+            if (instance == null) {
+               instance = new ServerAuthManager();
+            }
+         }
+      }
+
+      return instance;
+   }
+
+   @Nonnull
+   public ProfileServiceClient getProfileServiceClient() {
+      if (this.profileServiceClient == null) {
+         synchronized (this) {
+            if (this.profileServiceClient == null) {
+               this.profileServiceClient = new ProfileServiceClient("https://account-data.hytale.com");
+            }
+         }
+      }
+
+      return this.profileServiceClient;
    }
 
    public void initialize() {
@@ -152,21 +177,48 @@ public class ServerAuthManager {
       }
    }
 
-   public static ServerAuthManager getInstance() {
-      if (instance == null) {
-         synchronized (ServerAuthManager.class) {
-            if (instance == null) {
-               instance = new ServerAuthManager();
-            }
-         }
+   public void shutdown() {
+      this.cancelActiveFlow();
+      if (this.refreshTask != null) {
+         this.refreshTask.cancel(false);
       }
 
-      return instance;
+      this.refreshScheduler.shutdown();
+      String currentSessionToken = this.getSessionToken();
+      if (currentSessionToken != null && !currentSessionToken.isEmpty()) {
+         if (this.sessionServiceClient == null) {
+            this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
+         }
+
+         this.sessionServiceClient.terminateSession(currentSessionToken);
+      }
+   }
+
+   public void logout() {
+      this.cancelActiveFlow();
+      if (this.refreshTask != null) {
+         this.refreshTask.cancel(false);
+         this.refreshTask = null;
+      }
+
+      this.gameSession.set(null);
+      this.credentialStore.get().clear();
+      this.availableProfiles.clear();
+      this.pendingProfiles = null;
+      this.pendingAuthMode = null;
+      this.tokenExpiry = null;
+      this.authMode = ServerAuthManager.AuthMode.NONE;
+      LOGGER.at(Level.INFO).log("Server logged out");
    }
 
    @Nullable
    public SessionServiceClient.GameSessionResponse getGameSession() {
       return this.gameSession.get();
+   }
+
+   public void setGameSession(@Nonnull SessionServiceClient.GameSessionResponse session) {
+      this.gameSession.set(session);
+      LOGGER.at(Level.FINE).log("Game session updated");
    }
 
    @Nullable
@@ -179,11 +231,6 @@ public class ServerAuthManager {
    public String getSessionToken() {
       SessionServiceClient.GameSessionResponse session = this.gameSession.get();
       return session != null ? session.sessionToken : null;
-   }
-
-   public void setGameSession(@Nonnull SessionServiceClient.GameSessionResponse session) {
-      this.gameSession.set(session);
-      LOGGER.at(Level.FINE).log("Game session updated");
    }
 
    public boolean hasIdentityToken() {
@@ -215,6 +262,53 @@ public class ServerAuthManager {
    @Nonnull
    public UUID getServerSessionId() {
       return this.serverSessionId;
+   }
+
+   public ServerAuthManager.AuthMode getAuthMode() {
+      return this.authMode;
+   }
+
+   public boolean isSingleplayer() {
+      return this.isSingleplayer;
+   }
+
+   public boolean isOwner(@Nullable UUID playerUuid) {
+      UUID profileUuid = this.credentialStore.get().getProfile();
+      return profileUuid != null && profileUuid.equals(playerUuid);
+   }
+
+   @Nullable
+   public SessionServiceClient.GameProfile getSelectedProfile() {
+      UUID profileUuid = this.credentialStore.get().getProfile();
+      return profileUuid == null ? null : this.availableProfiles.get(profileUuid);
+   }
+
+   @Nullable
+   public Instant getTokenExpiry() {
+      return this.tokenExpiry;
+   }
+
+   public String getAuthStatus() {
+      StringBuilder sb = new StringBuilder();
+      sb.append(this.authMode.name());
+      if (this.hasSessionToken() && this.hasIdentityToken()) {
+         sb.append(" (authenticated)");
+      } else if (!this.hasSessionToken() && !this.hasIdentityToken()) {
+         sb.append(" (no tokens)");
+      } else {
+         sb.append(" (partial)");
+      }
+
+      if (this.tokenExpiry != null) {
+         long secondsRemaining = this.tokenExpiry.getEpochSecond() - Instant.now().getEpochSecond();
+         if (secondsRemaining > 0L) {
+            sb.append(String.format(" [expires in %dm %ds]", secondsRemaining / 60L, secondsRemaining % 60L));
+         } else {
+            sb.append(" [EXPIRED]");
+         }
+      }
+
+      return sb.toString();
    }
 
    public CompletableFuture<ServerAuthManager.AuthResult> startFlowAsync(@Nonnull OAuthBrowserFlow flow) {
@@ -301,6 +395,102 @@ public class ServerAuthManager {
 
       this.credentialStore.set(newStore);
       LOGGER.at(Level.INFO).log("Swapped credential store to: %s", provider.getClass().getSimpleName());
+   }
+
+   public boolean cancelActiveFlow() {
+      if (this.cancelActiveFlow != null) {
+         this.cancelActiveFlow.run();
+         this.cancelActiveFlow = null;
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   @Nullable
+   public SessionServiceClient.GameProfile[] getPendingProfiles() {
+      return this.pendingProfiles;
+   }
+
+   public boolean hasPendingProfiles() {
+      return this.pendingProfiles != null && this.pendingProfiles.length > 0;
+   }
+
+   public boolean selectPendingProfile(int index) {
+      SessionServiceClient.GameProfile[] profiles = this.pendingProfiles;
+      ServerAuthManager.AuthMode mode = this.pendingAuthMode;
+      if (profiles == null || profiles.length == 0) {
+         LOGGER.at(Level.WARNING).log("No pending profiles to select");
+         return false;
+      } else if (index >= 1 && index <= profiles.length) {
+         SessionServiceClient.GameProfile selected = profiles[index - 1];
+         LOGGER.at(Level.INFO).log("Selected profile: %s (%s)", selected.username, selected.uuid);
+         return this.completeAuthWithProfile(selected, mode != null ? mode : ServerAuthManager.AuthMode.OAUTH_BROWSER);
+      } else {
+         LOGGER.at(Level.WARNING).log("Invalid profile index: %d (valid range: 1-%d)", index, profiles.length);
+         return false;
+      }
+   }
+
+   public boolean selectPendingProfileByUsername(String username) {
+      SessionServiceClient.GameProfile[] profiles = this.pendingProfiles;
+      ServerAuthManager.AuthMode mode = this.pendingAuthMode;
+      if (profiles != null && profiles.length != 0) {
+         for (SessionServiceClient.GameProfile profile : profiles) {
+            if (profile.username != null && profile.username.equalsIgnoreCase(username)) {
+               LOGGER.at(Level.INFO).log("Selected profile: %s (%s)", profile.username, profile.uuid);
+               return this.completeAuthWithProfile(profile, mode != null ? mode : ServerAuthManager.AuthMode.OAUTH_BROWSER);
+            }
+         }
+
+         LOGGER.at(Level.WARNING).log("No profile found with username: %s", username);
+         return false;
+      } else {
+         LOGGER.at(Level.WARNING).log("No pending profiles to select");
+         return false;
+      }
+   }
+
+   public void clearPendingProfiles() {
+      this.pendingProfiles = null;
+      this.pendingAuthMode = null;
+   }
+
+   private boolean validateInitialTokens(@Nullable String sessionToken, @Nullable String identityToken) {
+      if (sessionToken == null && identityToken == null) {
+         return false;
+      } else {
+         if (this.sessionServiceClient == null) {
+            this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
+         }
+
+         JWTValidator validator = new JWTValidator(this.sessionServiceClient, "https://sessions.hytale.com", "");
+         boolean valid = true;
+         if (identityToken != null) {
+            JWTValidator.IdentityTokenClaims claims = validator.validateIdentityToken(identityToken);
+            if (claims == null) {
+               LOGGER.at(Level.WARNING).log("Identity token validation failed");
+               valid = false;
+            } else if (!claims.hasScope("hytale:server")) {
+               LOGGER.at(Level.WARNING).log("Identity token missing required scope: expected %s, got %s", "hytale:server", claims.scope);
+               valid = false;
+            } else {
+               LOGGER.at(Level.INFO).log("Identity token validated for %s (%s)", claims.username, claims.subject);
+            }
+         }
+
+         if (sessionToken != null) {
+            JWTValidator.SessionTokenClaims claims = validator.validateSessionToken(sessionToken);
+            if (claims == null) {
+               LOGGER.at(Level.WARNING).log("Session token validation failed");
+               valid = false;
+            } else {
+               LOGGER.at(Level.INFO).log("Session token validated");
+            }
+         }
+
+         return valid;
+      }
    }
 
    private ServerAuthManager.AuthResult createGameSessionFromOAuth(ServerAuthManager.AuthMode mode) {
@@ -403,7 +593,7 @@ public class ServerAuthManager {
          if (profileUuid != null) {
             for (SessionServiceClient.GameProfile profilex : profiles) {
                if (profilex.uuid.equals(profileUuid)) {
-                  LOGGER.at(Level.INFO).log("Auto-selected profile from stroage: %s (%s)", profilex.username, profilex.uuid);
+                  LOGGER.at(Level.INFO).log("Auto-selected profile from storage: %s (%s)", profilex.username, profilex.uuid);
                   return profilex;
                }
             }
@@ -424,13 +614,9 @@ public class ServerAuthManager {
          this.cancelActiveFlow = null;
          this.pendingProfiles = null;
          this.pendingAuthMode = null;
-         Instant expiresAtInstant = newSession.getExpiresAtInstant();
-         if (expiresAtInstant != null) {
-            this.tokenExpiry = expiresAtInstant;
-            long secondsUntilExpiry = expiresAtInstant.getEpochSecond() - Instant.now().getEpochSecond();
-            if (secondsUntilExpiry > 300L) {
-               this.scheduleRefresh((int)secondsUntilExpiry);
-            }
+         Instant effectiveExpiry = this.getEffectiveExpiry(newSession);
+         if (effectiveExpiry != null) {
+            this.setExpiryAndScheduleRefresh(effectiveExpiry);
          }
 
          LOGGER.at(Level.INFO).log("Authentication successful! Mode: %s", mode);
@@ -439,226 +625,6 @@ public class ServerAuthManager {
    }
 
    @Nullable
-   public SessionServiceClient.GameProfile[] getPendingProfiles() {
-      return this.pendingProfiles;
-   }
-
-   public boolean hasPendingProfiles() {
-      return this.pendingProfiles != null && this.pendingProfiles.length > 0;
-   }
-
-   public boolean selectPendingProfile(int index) {
-      SessionServiceClient.GameProfile[] profiles = this.pendingProfiles;
-      ServerAuthManager.AuthMode mode = this.pendingAuthMode;
-      if (profiles == null || profiles.length == 0) {
-         LOGGER.at(Level.WARNING).log("No pending profiles to select");
-         return false;
-      } else if (index >= 1 && index <= profiles.length) {
-         SessionServiceClient.GameProfile selected = profiles[index - 1];
-         LOGGER.at(Level.INFO).log("Selected profile: %s (%s)", selected.username, selected.uuid);
-         return this.completeAuthWithProfile(selected, mode != null ? mode : ServerAuthManager.AuthMode.OAUTH_BROWSER);
-      } else {
-         LOGGER.at(Level.WARNING).log("Invalid profile index: %d (valid range: 1-%d)", index, profiles.length);
-         return false;
-      }
-   }
-
-   public boolean selectPendingProfileByUsername(String username) {
-      SessionServiceClient.GameProfile[] profiles = this.pendingProfiles;
-      ServerAuthManager.AuthMode mode = this.pendingAuthMode;
-      if (profiles != null && profiles.length != 0) {
-         for (SessionServiceClient.GameProfile profile : profiles) {
-            if (profile.username != null && profile.username.equalsIgnoreCase(username)) {
-               LOGGER.at(Level.INFO).log("Selected profile: %s (%s)", profile.username, profile.uuid);
-               return this.completeAuthWithProfile(profile, mode != null ? mode : ServerAuthManager.AuthMode.OAUTH_BROWSER);
-            }
-         }
-
-         LOGGER.at(Level.WARNING).log("No profile found with username: %s", username);
-         return false;
-      } else {
-         LOGGER.at(Level.WARNING).log("No pending profiles to select");
-         return false;
-      }
-   }
-
-   public void clearPendingProfiles() {
-      this.pendingProfiles = null;
-      this.pendingAuthMode = null;
-   }
-
-   public boolean cancelActiveFlow() {
-      if (this.cancelActiveFlow != null) {
-         this.cancelActiveFlow.run();
-         this.cancelActiveFlow = null;
-         return true;
-      } else {
-         return false;
-      }
-   }
-
-   private boolean validateInitialTokens(@Nullable String sessionToken, @Nullable String identityToken) {
-      if (sessionToken == null && identityToken == null) {
-         return false;
-      } else {
-         if (this.sessionServiceClient == null) {
-            this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
-         }
-
-         JWTValidator validator = new JWTValidator(this.sessionServiceClient, "https://sessions.hytale.com", "");
-         boolean valid = true;
-         if (identityToken != null) {
-            JWTValidator.IdentityTokenClaims claims = validator.validateIdentityToken(identityToken);
-            if (claims == null) {
-               LOGGER.at(Level.WARNING).log("Identity token validation failed");
-               valid = false;
-            } else if (!claims.hasScope("hytale:server")) {
-               LOGGER.at(Level.WARNING).log("Identity token missing required scope: expected %s, got %s", "hytale:server", claims.scope);
-               valid = false;
-            } else {
-               LOGGER.at(Level.INFO).log("Identity token validated for %s (%s)", claims.username, claims.subject);
-            }
-         }
-
-         if (sessionToken != null) {
-            JWTValidator.SessionTokenClaims claims = validator.validateSessionToken(sessionToken);
-            if (claims == null) {
-               LOGGER.at(Level.WARNING).log("Session token validation failed");
-               valid = false;
-            } else {
-               LOGGER.at(Level.INFO).log("Session token validated");
-            }
-         }
-
-         return valid;
-      }
-   }
-
-   private void parseAndScheduleRefresh() {
-      SessionServiceClient.GameSessionResponse session = this.gameSession.get();
-      if (session != null) {
-         Instant expiry = session.getExpiresAtInstant();
-         if (expiry != null) {
-            this.tokenExpiry = expiry;
-            long secondsUntilExpiry = expiry.getEpochSecond() - Instant.now().getEpochSecond();
-            if (secondsUntilExpiry > 300L) {
-               this.scheduleRefresh((int)secondsUntilExpiry);
-            }
-
-            return;
-         }
-      }
-
-      String idToken = this.getIdentityToken();
-      if (idToken != null) {
-         try {
-            String[] parts = idToken.split("\\.");
-            if (parts.length != 3) {
-               return;
-            }
-
-            String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
-            if (json.has("exp")) {
-               long exp = json.get("exp").getAsLong();
-               this.tokenExpiry = Instant.ofEpochSecond(exp);
-               long secondsUntilExpiry = exp - Instant.now().getEpochSecond();
-               if (secondsUntilExpiry > 300L) {
-                  this.scheduleRefresh((int)secondsUntilExpiry);
-               }
-            }
-         } catch (Exception var10) {
-            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var10)).log("Failed to parse token expiry");
-         }
-      }
-   }
-
-   private void scheduleRefresh(int expiresInSeconds) {
-      if (this.refreshTask != null) {
-         this.refreshTask.cancel(false);
-      }
-
-      long refreshDelay = Math.max(expiresInSeconds - 300, 60);
-      LOGGER.at(Level.INFO).log("Token refresh scheduled in %d seconds", refreshDelay);
-      this.refreshTask = this.refreshScheduler.schedule(this::doRefresh, refreshDelay, TimeUnit.SECONDS);
-   }
-
-   private void doRefresh() {
-      String currentSessionToken = this.getSessionToken();
-      if (currentSessionToken == null || !this.refreshGameSession(currentSessionToken)) {
-         LOGGER.at(Level.INFO).log("Game session refresh failed, attempting OAuth refresh...");
-         if (!this.refreshGameSessionViaOAuth()) {
-            LOGGER.at(Level.WARNING).log("All refresh attempts failed. Server may lose authentication.");
-         }
-      }
-   }
-
-   private boolean refreshGameSession(String currentSessionToken) {
-      LOGGER.at(Level.INFO).log("Refreshing game session with Session Service...");
-      if (this.sessionServiceClient == null) {
-         this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
-      }
-
-      try {
-         SessionServiceClient.GameSessionResponse response = this.sessionServiceClient.refreshSessionAsync(currentSessionToken).join();
-         if (response != null) {
-            this.gameSession.set(response);
-            Instant expiresAtInstant = response.getExpiresAtInstant();
-            if (expiresAtInstant != null) {
-               this.tokenExpiry = expiresAtInstant;
-               long secondsUntilExpiry = expiresAtInstant.getEpochSecond() - Instant.now().getEpochSecond();
-               if (secondsUntilExpiry > 300L) {
-                  this.scheduleRefresh((int)secondsUntilExpiry);
-               }
-            }
-
-            LOGGER.at(Level.INFO).log("Game session refresh successful");
-            return true;
-         }
-      } catch (Exception var6) {
-         LOGGER.at(Level.WARNING).log("Session Service refresh failed: %s", var6.getMessage());
-      }
-
-      return false;
-   }
-
-   private boolean refreshGameSessionViaOAuth() {
-      boolean supported = switch (this.authMode) {
-         case OAUTH_BROWSER, OAUTH_DEVICE, OAUTH_STORE -> true;
-         default -> false;
-      };
-      if (!supported) {
-         LOGGER.at(Level.WARNING).log("Refresh via OAuth not supported for current Auth Mode");
-         return false;
-      } else {
-         UUID currentProfile = this.credentialStore.get().getProfile();
-         if (currentProfile == null) {
-            LOGGER.at(Level.WARNING).log("No current profile, cannot refresh game session");
-            return false;
-         } else {
-            SessionServiceClient.GameSessionResponse newSession = this.createGameSession(currentProfile);
-            if (newSession == null) {
-               LOGGER.at(Level.WARNING).log("Failed to create new game session");
-               return false;
-            } else {
-               this.gameSession.set(newSession);
-               Instant expiresAtInstant = newSession.getExpiresAtInstant();
-               if (expiresAtInstant != null) {
-                  this.tokenExpiry = expiresAtInstant;
-                  long secondsUntilExpiry = expiresAtInstant.getEpochSecond() - Instant.now().getEpochSecond();
-                  if (secondsUntilExpiry > 300L) {
-                     this.scheduleRefresh((int)secondsUntilExpiry);
-                  }
-               }
-
-               LOGGER.at(Level.INFO).log("New game session created via OAuth refresh");
-               return true;
-            }
-         }
-      }
-   }
-
-   @NullableDecl
    private SessionServiceClient.GameSessionResponse createGameSession(UUID profileUuid) {
       if (this.sessionServiceClient == null) {
          this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
@@ -690,84 +656,127 @@ public class ServerAuthManager {
       }
    }
 
-   public void logout() {
-      this.cancelActiveFlow();
-      if (this.refreshTask != null) {
-         this.refreshTask.cancel(false);
-         this.refreshTask = null;
+   private void parseAndScheduleRefresh() {
+      SessionServiceClient.GameSessionResponse session = this.gameSession.get();
+      Instant effectiveExpiry = this.getEffectiveExpiry(session);
+      if (effectiveExpiry != null) {
+         this.setExpiryAndScheduleRefresh(effectiveExpiry);
       }
-
-      this.gameSession.set(null);
-      this.credentialStore.get().clear();
-      this.availableProfiles.clear();
-      this.pendingProfiles = null;
-      this.pendingAuthMode = null;
-      this.tokenExpiry = null;
-      this.authMode = ServerAuthManager.AuthMode.NONE;
-      LOGGER.at(Level.INFO).log("Server logged out");
-   }
-
-   public ServerAuthManager.AuthMode getAuthMode() {
-      return this.authMode;
-   }
-
-   public boolean isSingleplayer() {
-      return this.isSingleplayer;
-   }
-
-   public boolean isOwner(@Nullable UUID playerUuid) {
-      UUID profileUuid = this.credentialStore.get().getProfile();
-      return profileUuid != null && profileUuid.equals(playerUuid);
    }
 
    @Nullable
-   public SessionServiceClient.GameProfile getSelectedProfile() {
-      UUID profileUuid = this.credentialStore.get().getProfile();
-      return profileUuid == null ? null : this.availableProfiles.get(profileUuid);
-   }
-
-   @Nullable
-   public Instant getTokenExpiry() {
-      return this.tokenExpiry;
-   }
-
-   public String getAuthStatus() {
-      StringBuilder sb = new StringBuilder();
-      sb.append(this.authMode.name());
-      if (this.hasSessionToken() && this.hasIdentityToken()) {
-         sb.append(" (authenticated)");
-      } else if (!this.hasSessionToken() && !this.hasIdentityToken()) {
-         sb.append(" (no tokens)");
+   private Instant getEffectiveExpiry(@Nullable SessionServiceClient.GameSessionResponse session) {
+      Instant sessionExpiry = session != null ? session.getExpiresAtInstant() : null;
+      Instant identityExpiry = this.parseIdentityTokenExpiry(session != null ? session.identityToken : this.getIdentityToken());
+      if (sessionExpiry != null && identityExpiry != null) {
+         return sessionExpiry.isBefore(identityExpiry) ? sessionExpiry : identityExpiry;
       } else {
-         sb.append(" (partial)");
+         return sessionExpiry != null ? sessionExpiry : identityExpiry;
       }
-
-      if (this.tokenExpiry != null) {
-         long secondsRemaining = this.tokenExpiry.getEpochSecond() - Instant.now().getEpochSecond();
-         if (secondsRemaining > 0L) {
-            sb.append(String.format(" [expires in %dm %ds]", secondsRemaining / 60L, secondsRemaining % 60L));
-         } else {
-            sb.append(" [EXPIRED]");
-         }
-      }
-
-      return sb.toString();
    }
 
-   public void shutdown() {
-      this.cancelActiveFlow();
+   @Nullable
+   private Instant parseIdentityTokenExpiry(@Nullable String idToken) {
+      if (idToken == null) {
+         return null;
+      } else {
+         try {
+            String[] parts = idToken.split("\\.");
+            if (parts.length != 3) {
+               return null;
+            }
+
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+            JsonObject json = JsonParser.parseString(payload).getAsJsonObject();
+            if (json.has("exp")) {
+               return Instant.ofEpochSecond(json.get("exp").getAsLong());
+            }
+         } catch (Exception var5) {
+            ((HytaleLogger.Api)LOGGER.at(Level.WARNING).withCause(var5)).log("Failed to parse identity token expiry");
+         }
+
+         return null;
+      }
+   }
+
+   private void setExpiryAndScheduleRefresh(@Nonnull Instant expiry) {
+      this.tokenExpiry = expiry;
       if (this.refreshTask != null) {
          this.refreshTask.cancel(false);
       }
 
-      this.refreshScheduler.shutdown();
-      String currentSessionToken = this.getSessionToken();
-      if (currentSessionToken != null && !currentSessionToken.isEmpty()) {
-         if (this.sessionServiceClient == null) {
-            this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
-         }
+      long secondsUntilExpiry = expiry.getEpochSecond() - Instant.now().getEpochSecond();
+      if (secondsUntilExpiry > 300L) {
+         long refreshDelay = Math.max(secondsUntilExpiry - 300L, 60L);
+         LOGGER.at(Level.INFO).log("Token refresh scheduled in %d seconds", refreshDelay);
+         this.refreshTask = this.refreshScheduler.schedule(this::doRefresh, refreshDelay, TimeUnit.SECONDS);
+      }
+   }
 
-         this.sessionServiceClient.terminateSession(currentSessionToken);
+   private void doRefresh() {
+      String currentSessionToken = this.getSessionToken();
+      if (currentSessionToken == null || !this.refreshGameSession(currentSessionToken)) {
+         LOGGER.at(Level.INFO).log("Game session refresh failed, attempting OAuth refresh...");
+         if (!this.refreshGameSessionViaOAuth()) {
+            LOGGER.at(Level.WARNING).log("All refresh attempts failed. Server may lose authentication.");
+         }
+      }
+   }
+
+   private boolean refreshGameSession(String currentSessionToken) {
+      LOGGER.at(Level.INFO).log("Refreshing game session with Session Service...");
+      if (this.sessionServiceClient == null) {
+         this.sessionServiceClient = new SessionServiceClient("https://sessions.hytale.com");
+      }
+
+      try {
+         SessionServiceClient.GameSessionResponse response = this.sessionServiceClient.refreshSessionAsync(currentSessionToken).join();
+         if (response != null) {
+            this.gameSession.set(response);
+            Instant effectiveExpiry = this.getEffectiveExpiry(response);
+            if (effectiveExpiry != null) {
+               this.setExpiryAndScheduleRefresh(effectiveExpiry);
+            }
+
+            LOGGER.at(Level.INFO).log("Game session refresh successful");
+            return true;
+         }
+      } catch (Exception var4) {
+         LOGGER.at(Level.WARNING).log("Session Service refresh failed: %s", var4.getMessage());
+      }
+
+      return false;
+   }
+
+   private boolean refreshGameSessionViaOAuth() {
+      boolean supported = switch (this.authMode) {
+         case OAUTH_BROWSER, OAUTH_DEVICE, OAUTH_STORE -> true;
+         default -> false;
+      };
+      if (!supported) {
+         LOGGER.at(Level.WARNING).log("Refresh via OAuth not supported for current Auth Mode");
+         return false;
+      } else {
+         UUID currentProfile = this.credentialStore.get().getProfile();
+         if (currentProfile == null) {
+            LOGGER.at(Level.WARNING).log("No current profile, cannot refresh game session");
+            return false;
+         } else {
+            SessionServiceClient.GameSessionResponse newSession = this.createGameSession(currentProfile);
+            if (newSession == null) {
+               LOGGER.at(Level.WARNING).log("Failed to create new game session");
+               return false;
+            } else {
+               this.gameSession.set(newSession);
+               Instant effectiveExpiry = this.getEffectiveExpiry(newSession);
+               if (effectiveExpiry != null) {
+                  this.setExpiryAndScheduleRefresh(effectiveExpiry);
+               }
+
+               LOGGER.at(Level.INFO).log("New game session created via OAuth refresh");
+               return true;
+            }
+         }
       }
    }
 
