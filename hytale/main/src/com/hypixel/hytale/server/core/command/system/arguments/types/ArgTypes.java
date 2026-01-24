@@ -678,7 +678,24 @@ public final class ArgTypes {
             parseResult.fail(Message.raw("Block entry cannot be empty"));
             return null;
          } else {
-            return input;
+            String blockName = input;
+            int percentIndex = input.indexOf(37);
+            if (percentIndex != -1) {
+               blockName = input.substring(percentIndex + 1);
+            }
+
+            int pipeIndex = blockName.indexOf(124);
+            if (pipeIndex != -1) {
+               blockName = blockName.substring(0, pipeIndex);
+            }
+
+            int blockId = BlockType.getAssetMap().getIndex(blockName);
+            if (blockId == Integer.MIN_VALUE) {
+               parseResult.fail(Message.translation("server.builderTools.invalidBlockType").param("name", "").param("key", blockName));
+               return null;
+            } else {
+               return input;
+            }
          }
       }
    };

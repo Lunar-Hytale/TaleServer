@@ -17,7 +17,7 @@ import javax.annotation.Nonnull;
 
 public class UpdatePrefabsCommand extends AbstractCommandCollection {
    public UpdatePrefabsCommand() {
-      super("prefabs", "server.commands.update.prefabs.desc");
+      super("prefabs", "server.commands.git.prefabs.desc");
       this.addSubCommand(new UpdatePrefabsCommand.UpdatePrefabsStatusCommand());
       this.addSubCommand(new UpdatePrefabsCommand.UpdatePrefabsCommitCommand());
       this.addSubCommand(new UpdatePrefabsCommand.UpdatePrefabsPullCommand());
@@ -27,7 +27,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
    private static class UpdatePrefabsAllCommand extends UpdatePrefabsCommand.UpdatePrefabsGitCommand {
       public UpdatePrefabsAllCommand() {
-         super("all", "server.commands.update.prefabs.all.desc");
+         super("all", "server.commands.git.prefabs.all.desc");
       }
 
       @Nonnull
@@ -39,7 +39,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
             {"git", "submodule", "foreach", "git", "pull"},
             {"git", "submodule", "foreach", "git", "push"},
             {"git", "add", "--all", "."},
-            {"git", "commit", "-am", "\"Update prefabs by " + senderDisplayName + "\""},
+            {"git", "commit", "-am", "Update prefabs by " + senderDisplayName},
             {"git", "pull"},
             {"git", "push"}
          };
@@ -48,7 +48,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
    private static class UpdatePrefabsCommitCommand extends UpdatePrefabsCommand.UpdatePrefabsGitCommand {
       public UpdatePrefabsCommitCommand() {
-         super("commit", "server.commands.update.prefabs.commit.desc");
+         super("commit", "server.commands.git.prefabs.commit.desc");
       }
 
       @Nonnull
@@ -56,7 +56,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
       protected String[][] getCommands(@Nonnull String senderDisplayName) {
          return new String[][]{
             {"git", "add", "--all", "."},
-            {"git", "commit", "-am", "\"Update prefabs by " + senderDisplayName + "\""},
+            {"git", "commit", "-am", "Update prefabs by " + senderDisplayName},
             {"git", "submodule", "foreach", "git", "add", "--all", "."},
             {"git", "submodule", "foreach", "git", "commit", "-am", "\"Update prefabs by " + senderDisplayName + "\""}
          };
@@ -90,13 +90,17 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
                if (gitPath == null) {
                   context.sendMessage(Message.translation("server.general.pathNotGitRepo").param("path", prefabsPath.toString()));
                } else {
-                  String senderDisplayName = context.sender().getDisplayName();
+                  String senderDisplayName = context.sender().getDisplayName().replaceAll("[^a-zA-Z0-9 ._-]", "");
+                  if (senderDisplayName.isEmpty()) {
+                     senderDisplayName = "Unknown";
+                  }
+
                   String[][] cmds = this.getCommands(senderDisplayName);
 
                   for (String[] processCommand : cmds) {
                      try {
                         String commandDisplay = String.join(" ", processCommand);
-                        context.sendMessage(Message.translation("server.commands.update.runningCmd").param("cmd", commandDisplay));
+                        context.sendMessage(Message.translation("server.commands.git.runningCmd").param("cmd", commandDisplay));
                         Process process = new ProcessBuilder(processCommand).directory(gitPath.toFile()).start();
 
                         try {
@@ -105,23 +109,23 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
                            String line;
                            while ((line = reader.readLine()) != null) {
-                              context.sendMessage(Message.translation("server.commands.update.runningStdOut").param("cmd", commandDisplay).param("line", line));
+                              context.sendMessage(Message.translation("server.commands.git.runningStdOut").param("cmd", commandDisplay).param("line", line));
                            }
 
                            reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
 
                            while ((line = reader.readLine()) != null) {
-                              context.sendMessage(Message.translation("server.commands.update.runningStdErr").param("cmd", commandDisplay).param("line", line));
+                              context.sendMessage(Message.translation("server.commands.git.runningStdErr").param("cmd", commandDisplay).param("line", line));
                            }
 
-                           context.sendMessage(Message.translation("server.commands.update.done").param("cmd", commandDisplay));
-                        } catch (InterruptedException var14) {
+                           context.sendMessage(Message.translation("server.commands.git.done").param("cmd", commandDisplay));
+                        } catch (InterruptedException var15) {
                            Thread.currentThread().interrupt();
                            break;
                         }
-                     } catch (IOException var15) {
+                     } catch (IOException var16) {
                         context.sendMessage(
-                           Message.translation("server.commands.update.failed").param("cmd", String.join(" ", processCommand)).param("msg", var15.getMessage())
+                           Message.translation("server.commands.git.failed").param("cmd", String.join(" ", processCommand)).param("msg", var16.getMessage())
                         );
                         break;
                      }
@@ -134,7 +138,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
    private static class UpdatePrefabsPullCommand extends UpdatePrefabsCommand.UpdatePrefabsGitCommand {
       public UpdatePrefabsPullCommand() {
-         super("pull", "server.commands.update.prefabs.pull.desc");
+         super("pull", "server.commands.git.prefabs.pull.desc");
       }
 
       @Nonnull
@@ -146,7 +150,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
    private static class UpdatePrefabsPushCommand extends UpdatePrefabsCommand.UpdatePrefabsGitCommand {
       public UpdatePrefabsPushCommand() {
-         super("push", "server.commands.update.prefabs.push.desc");
+         super("push", "server.commands.git.prefabs.push.desc");
       }
 
       @Nonnull
@@ -158,7 +162,7 @@ public class UpdatePrefabsCommand extends AbstractCommandCollection {
 
    private static class UpdatePrefabsStatusCommand extends UpdatePrefabsCommand.UpdatePrefabsGitCommand {
       public UpdatePrefabsStatusCommand() {
-         super("status", "server.commands.update.prefabs.status.desc");
+         super("status", "server.commands.git.prefabs.status.desc");
       }
 
       @Nonnull

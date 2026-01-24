@@ -11,6 +11,7 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.event.IEventDispatcher;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.math.shape.Box;
+import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Transform;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.math.vector.Vector3f;
@@ -73,10 +74,13 @@ import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.SoundUtil;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.WorldMapTracker;
+import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
+import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.util.NotificationUtil;
 import com.hypixel.hytale.server.core.util.TempAssetIdUtil;
-import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -247,7 +251,7 @@ public class Player extends LivingEntity implements CommandSender, PermissionHol
       Vector3d position = transformComponent.getPosition();
       this.addLocationChange(ref, locX - position.getX(), locY - position.getY(), locZ - position.getZ(), componentAccessor);
       super.moveTo(ref, locX, locY, locZ, componentAccessor);
-      this.windowManager.validateWindows();
+      this.windowManager.validateWindows(ref, componentAccessor);
    }
 
    @Nonnull
@@ -365,7 +369,6 @@ public class Player extends LivingEntity implements CommandSender, PermissionHol
       PlayerRef playerRef = this.playerRef;
       LegacyEntityTrackerSystems.clear(this, holder);
       this.worldMapTracker.clear();
-      this.windowManager.closeAllWindows();
       this.hudManager.resetUserInterface(this.playerRef);
       this.hudManager.resetHud(this.playerRef);
       CameraManager cameraManagerComponent = playerRef.getComponent(CameraManager.getComponentType());
@@ -519,7 +522,7 @@ public class Player extends LivingEntity implements CommandSender, PermissionHol
    }
 
    @Nonnull
-   public static Transform getRespawnPosition(
+   public static CompletableFuture<Transform> getRespawnPosition(
       @Nonnull Ref<EntityStore> ref, @Nonnull String worldName, @Nonnull ComponentAccessor<EntityStore> componentAccessor
    ) {
       Player playerComponent = componentAccessor.getComponent(ref, getComponentType());
@@ -543,34 +546,96 @@ public class Player extends LivingEntity implements CommandSender, PermissionHol
             return Double.compare(distA, distB);
          }).toList();
          BoundingBox playerBoundingBoxComponent = componentAccessor.getComponent(ref, BoundingBox.getComponentType());
-         if (playerBoundingBoxComponent == null) {
-            return new Transform(sortedRespawnPoints.getFirst().getRespawnPosition());
-         } else {
-            for (PlayerRespawnPointData respawnPoint : sortedRespawnPoints) {
-               Pair<Boolean, Vector3d> respawnPointResult = ensureNoCollisionAtRespawnPosition(respawnPoint, playerBoundingBoxComponent.getBoundingBox(), world);
-               if ((Boolean)respawnPointResult.left()) {
-                  return new Transform((Vector3d)respawnPointResult.right(), Vector3f.ZERO);
-               }
-
-               playerComponent.sendMessage(Message.translation("server.general.respawnPointObstructed").param("respawnPointName", respawnPoint.getName()));
-            }
-
-            playerComponent.sendMessage(Message.translation("server.general.allRespawnPointsObstructed"));
-            Transform worldSpawnPoint = world.getWorldConfig().getSpawnProvider().getSpawnPoint(ref, componentAccessor);
-            worldSpawnPoint.setRotation(Vector3f.ZERO);
-            return worldSpawnPoint;
-         }
+         return playerBoundingBoxComponent == null
+            ? CompletableFuture.completedFuture(new Transform(sortedRespawnPoints.getFirst().getRespawnPosition()))
+            : tryUseSpawnPoint(world, sortedRespawnPoints, 0, ref, playerComponent, playerBoundingBoxComponent.getBoundingBox());
       } else {
          Transform worldSpawnPoint = world.getWorldConfig().getSpawnProvider().getSpawnPoint(ref, componentAccessor);
          worldSpawnPoint.setRotation(Vector3f.ZERO);
-         return worldSpawnPoint;
+         return CompletableFuture.completedFuture(worldSpawnPoint);
       }
    }
 
-   private static Pair<Boolean, Vector3d> ensureNoCollisionAtRespawnPosition(PlayerRespawnPointData playerRespawnPointData, Box playerHitbox, World world) {
+   @Nonnull
+   private static CompletableFuture<Transform> tryUseSpawnPoint(
+      World world, List<PlayerRespawnPointData> sortedRespawnPoints, int index, Ref<EntityStore> ref, Player playerComponent, Box boundingBox
+   ) {
+      if (sortedRespawnPoints != null && index < sortedRespawnPoints.size()) {
+         PlayerRespawnPointData respawnPoint = sortedRespawnPoints.get(index);
+         LongOpenHashSet requiredChunks = new LongOpenHashSet();
+         if (respawnPoint.getRespawnPosition() != null) {
+            boundingBox.forEachBlock(respawnPoint.getRespawnPosition(), 2.0, requiredChunks, (x, y, z, chunks) -> {
+               chunks.add(ChunkUtil.indexChunkFromBlock(x, z));
+               return true;
+            });
+         }
+
+         if (respawnPoint.getBlockPosition() != null) {
+            boundingBox.forEachBlock(respawnPoint.getBlockPosition().toVector3d(), 2.0, requiredChunks, (x, y, z, chunks) -> {
+               chunks.add(ChunkUtil.indexChunkFromBlock(x, z));
+               return true;
+            });
+         }
+
+         CompletableFuture<WorldChunk>[] chunkFutures = new CompletableFuture[requiredChunks.size()];
+         int i = 0;
+         LongIterator iterator = requiredChunks.iterator();
+
+         while (iterator.hasNext()) {
+            long chunkIndex = iterator.nextLong();
+            chunkFutures[i++] = world.getChunkStore().getChunkReferenceAsync(chunkIndex).thenApplyAsync(v -> {
+               if (v != null && v.isValid()) {
+                  WorldChunk wc = v.getStore().getComponent((Ref<ChunkStore>)v, WorldChunk.getComponentType());
+
+                  assert wc != null;
+
+                  wc.addKeepLoaded();
+                  return wc;
+               } else {
+                  return null;
+               }
+            }, world);
+         }
+
+         return CompletableFuture.allOf(chunkFutures)
+            .thenApplyAsync(v -> {
+               Vector3d pos = ensureNoCollisionAtRespawnPosition(respawnPoint, boundingBox, world);
+               if (pos != null) {
+                  return new Transform(pos, Vector3f.ZERO);
+               } else {
+                  playerComponent.sendMessage(Message.translation("server.general.respawnPointObstructed").param("respawnPointName", respawnPoint.getName()));
+                  return null;
+               }
+            }, world)
+            .whenComplete((unused, throwable) -> {
+               for (CompletableFuture<WorldChunk> future : chunkFutures) {
+                  future.thenAccept(WorldChunk::removeKeepLoaded);
+               }
+            })
+            .thenCompose(
+               v -> v != null
+                  ? CompletableFuture.completedFuture(v)
+                  : tryUseSpawnPoint(world, sortedRespawnPoints, index + 1, ref, playerComponent, boundingBox)
+            );
+      } else {
+         playerComponent.sendMessage(Message.translation("server.general.allRespawnPointsObstructed"));
+         return CompletableFuture.supplyAsync(() -> {
+            if (!ref.isValid()) {
+               return new Transform();
+            } else {
+               Transform worldSpawnPoint = world.getWorldConfig().getSpawnProvider().getSpawnPoint(ref, ref.getStore());
+               worldSpawnPoint.setRotation(Vector3f.ZERO);
+               return worldSpawnPoint;
+            }
+         }, world);
+      }
+   }
+
+   @Nullable
+   private static Vector3d ensureNoCollisionAtRespawnPosition(PlayerRespawnPointData playerRespawnPointData, Box playerHitbox, World world) {
       Vector3d respawnPosition = new Vector3d(playerRespawnPointData.getRespawnPosition());
       if (CollisionModule.get().validatePosition(world, playerHitbox, respawnPosition, new CollisionResult()) != -1) {
-         return Pair.of(Boolean.TRUE, respawnPosition);
+         return respawnPosition;
       } else {
          respawnPosition.x = playerRespawnPointData.getBlockPosition().x + 0.5F;
          respawnPosition.y = playerRespawnPointData.getBlockPosition().y;
@@ -580,29 +645,29 @@ public class Player extends LivingEntity implements CommandSender, PermissionHol
             for (int offset = -distance; offset <= distance; offset++) {
                Vector3d newPosition = new Vector3d(respawnPosition.x + offset, respawnPosition.y, respawnPosition.z - distance);
                if (CollisionModule.get().validatePosition(world, playerHitbox, newPosition, new CollisionResult()) != -1) {
-                  return Pair.of(Boolean.TRUE, newPosition);
+                  return newPosition;
                }
 
                newPosition = new Vector3d(respawnPosition.x + offset, respawnPosition.y, respawnPosition.z + distance);
                if (CollisionModule.get().validatePosition(world, playerHitbox, newPosition, new CollisionResult()) != -1) {
-                  return Pair.of(Boolean.TRUE, newPosition);
+                  return newPosition;
                }
             }
 
             for (int offset = -distance + 1; offset < distance; offset++) {
                Vector3d newPositionx = new Vector3d(respawnPosition.x - distance, respawnPosition.y, respawnPosition.z + offset);
                if (CollisionModule.get().validatePosition(world, playerHitbox, newPositionx, new CollisionResult()) != -1) {
-                  return Pair.of(Boolean.TRUE, newPositionx);
+                  return newPositionx;
                }
 
                newPositionx = new Vector3d(respawnPosition.x + distance, respawnPosition.y, respawnPosition.z + offset);
                if (CollisionModule.get().validatePosition(world, playerHitbox, newPositionx, new CollisionResult()) != -1) {
-                  return Pair.of(Boolean.TRUE, newPositionx);
+                  return newPositionx;
                }
             }
          }
 
-         return Pair.of(Boolean.FALSE, respawnPosition);
+         return null;
       }
    }
 

@@ -21,7 +21,6 @@ import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.bench.Bench;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.bench.CraftingBench;
 import com.hypixel.hytale.server.core.asset.type.item.config.FieldcraftCategory;
-import com.hypixel.hytale.server.core.asset.type.item.config.ResourceType;
 import com.hypixel.hytale.server.core.io.PacketHandler;
 import com.hypixel.hytale.server.core.modules.i18n.commands.EnableTmpTagsCommand;
 import com.hypixel.hytale.server.core.modules.i18n.commands.InternationalizationCommands;
@@ -124,19 +123,6 @@ public class I18nModule extends JavaPlugin {
          event.getLoadedAssets().values().forEach(category -> {
             if (category.getName() != null) {
                addedMessages.put("fieldcraftCategories." + category.getId() + ".name", category.getName());
-            }
-         });
-         this.addDefaultMessages(addedMessages, event.isInitial());
-      });
-      this.getEventRegistry().register(LoadedAssetsEvent.class, ResourceType.class, event -> {
-         Map<String, String> addedMessages = new Object2ObjectOpenHashMap();
-         event.getLoadedAssets().values().forEach(resourceType -> {
-            if (resourceType.getName() != null) {
-               addedMessages.put("resourceTypes." + resourceType.getId() + ".name", resourceType.getName());
-            }
-
-            if (resourceType.getDescription() != null) {
-               addedMessages.put("resourceTypes." + resourceType.getId() + ".description", resourceType.getDescription());
             }
          });
          this.addDefaultMessages(addedMessages, event.isInitial());

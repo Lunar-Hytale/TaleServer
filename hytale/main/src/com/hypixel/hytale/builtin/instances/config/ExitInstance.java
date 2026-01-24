@@ -4,7 +4,7 @@ import com.hypixel.hytale.builtin.instances.InstancesPlugin;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.validation.Validators;
-import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.ComponentAccessor;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.server.core.asset.type.gameplay.respawn.HomeOrSpawnPoint;
@@ -12,6 +12,7 @@ import com.hypixel.hytale.server.core.asset.type.gameplay.respawn.RespawnControl
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
 
@@ -26,9 +27,12 @@ public class ExitInstance implements RespawnController {
    private RespawnController fallback = HomeOrSpawnPoint.INSTANCE;
 
    @Override
-   public void respawnPlayer(@Nonnull World world, @Nonnull Ref<EntityStore> playerReference, @Nonnull CommandBuffer<EntityStore> commandBuffer) {
+   public CompletableFuture<Void> respawnPlayer(
+      @Nonnull World world, @Nonnull Ref<EntityStore> playerReference, @Nonnull ComponentAccessor<EntityStore> commandBuffer
+   ) {
       try {
          InstancesPlugin.exitInstance(playerReference, commandBuffer);
+         return CompletableFuture.completedFuture(null);
       } catch (Exception var6) {
          PlayerRef playerRefComponent = commandBuffer.getComponent(playerReference, PlayerRef.getComponentType());
 
@@ -36,7 +40,7 @@ public class ExitInstance implements RespawnController {
 
          ((HytaleLogger.Api)InstancesPlugin.get().getLogger().at(Level.WARNING).withCause(var6))
             .log(playerRefComponent.getUsername() + " failed to leave an instance");
-         this.fallback.respawnPlayer(world, playerReference, commandBuffer);
+         return this.fallback.respawnPlayer(world, playerReference, commandBuffer);
       }
    }
 }

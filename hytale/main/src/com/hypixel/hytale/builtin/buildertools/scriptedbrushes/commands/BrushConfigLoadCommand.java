@@ -51,8 +51,6 @@ public class BrushConfigLoadCommand extends AbstractPlayerCommand {
 
    private static class LoadByNameCommand extends AbstractPlayerCommand {
       @Nonnull
-      private static final Message MESSAGE_COMMANDS_BRUSH_CONFIG_LOADED = Message.translation("server.commands.brushConfig.loaded");
-      @Nonnull
       private static final Message MESSAGE_COMMANDS_BRUSH_CONFIG_CANNOT_USE_COMMAND_DURING_EXEC = Message.translation(
          "server.commands.brushConfig.cannotUseCommandDuringExec"
       );
@@ -84,7 +82,7 @@ public class BrushConfigLoadCommand extends AbstractPlayerCommand {
             brushAssetArg.loadIntoExecutor(brushConfigCommandExecutor);
             prototypeSettings.setCurrentlyLoadedBrushConfigName(brushAssetArg.getId());
             prototypeSettings.setUsePrototypeBrushConfigurations(true);
-            playerRef.sendMessage(MESSAGE_COMMANDS_BRUSH_CONFIG_LOADED.param("name", brushAssetArg.getId()));
+            playerRef.sendMessage(Message.translation("server.commands.brushConfig.loaded").param("name", brushAssetArg.getId()));
          }
       }
    }

@@ -62,12 +62,12 @@ public class NPCDamageSystems {
          @Nonnull CommandBuffer<EntityStore> commandBuffer,
          @Nonnull Damage damage
       ) {
-         if (damage.getSource() instanceof Damage.EntitySource) {
-            Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-            if (attackerRef.isValid()) {
-               NPCEntity npcComponent = commandBuffer.getComponent(attackerRef, NPCEntity.getComponentType());
-               if (npcComponent != null) {
-                  npcComponent.getDamageData().onInflictedDamage(archetypeChunk.getReferenceTo(index), damage.getAmount());
+         if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+            Ref<EntityStore> sourceRef = entitySource.getRef();
+            if (sourceRef.isValid()) {
+               NPCEntity sourceNpcComponent = commandBuffer.getComponent(sourceRef, NPCEntity.getComponentType());
+               if (sourceNpcComponent != null) {
+                  sourceNpcComponent.getDamageData().onInflictedDamage(archetypeChunk.getReferenceTo(index), damage.getAmount());
                }
             }
          }
@@ -111,18 +111,18 @@ public class NPCDamageSystems {
          EntityEventView view = blackboard.getView(
             EntityEventView.class, ChunkUtil.chunkCoordinate(transformComponent.getPosition().x), ChunkUtil.chunkCoordinate(transformComponent.getPosition().z)
          );
-         if (damage.getSource() instanceof Damage.EntitySource) {
-            Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-            if (attackerRef.isValid()) {
-               Player attackerPlayerComponent = commandBuffer.getComponent(attackerRef, Player.getComponentType());
-               if (attackerPlayerComponent != null && attackerPlayerComponent.getGameMode() == GameMode.Creative) {
-                  PlayerSettings playerSettingsComponent = commandBuffer.getComponent(attackerRef, PlayerSettings.getComponentType());
+         if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+            Ref<EntityStore> sourceRef = entitySource.getRef();
+            if (sourceRef.isValid()) {
+               Player sourcePlayerComponent = commandBuffer.getComponent(sourceRef, Player.getComponentType());
+               if (sourcePlayerComponent != null && sourcePlayerComponent.getGameMode() == GameMode.Creative) {
+                  PlayerSettings playerSettingsComponent = commandBuffer.getComponent(sourceRef, PlayerSettings.getComponentType());
                   if (playerSettingsComponent == null || !playerSettingsComponent.creativeSettings().allowNPCDetection()) {
                      return;
                   }
                }
 
-               view.processAttackedEvent(archetypeChunk.getReferenceTo(index), attackerRef, commandBuffer, EntityEventType.DAMAGE);
+               view.processAttackedEvent(archetypeChunk.getReferenceTo(index), sourceRef, commandBuffer, EntityEventType.DAMAGE);
             }
          }
       }
@@ -181,38 +181,37 @@ public class NPCDamageSystems {
             assert npcComponent != null;
 
             Role role = npcComponent.getRole();
-
-            assert role != null;
-
-            List<ItemStack> itemsToDrop = new ObjectArrayList();
-            if (role.isPickupDropOnDeath()) {
-               Inventory inventory = npcComponent.getInventory();
-               itemsToDrop.addAll(inventory.getStorage().dropAllItemStacks());
-            }
-
-            String dropListId = role.getDropListId();
-            if (dropListId != null) {
-               ItemModule itemModule = ItemModule.get();
-               if (itemModule.isEnabled()) {
-                  List<ItemStack> randomItemsToDrop = itemModule.getRandomItemDrops(dropListId);
-                  itemsToDrop.addAll(randomItemsToDrop);
+            if (role != null) {
+               List<ItemStack> itemsToDrop = new ObjectArrayList();
+               if (role.isPickupDropOnDeath()) {
+                  Inventory inventory = npcComponent.getInventory();
+                  itemsToDrop.addAll(inventory.getStorage().dropAllItemStacks());
                }
-            }
 
-            if (!itemsToDrop.isEmpty()) {
-               TransformComponent transformComponent = store.getComponent(ref, TransformComponent.getComponentType());
+               String dropListId = role.getDropListId();
+               if (dropListId != null) {
+                  ItemModule itemModule = ItemModule.get();
+                  if (itemModule.isEnabled()) {
+                     List<ItemStack> randomItemsToDrop = itemModule.getRandomItemDrops(dropListId);
+                     itemsToDrop.addAll(randomItemsToDrop);
+                  }
+               }
 
-               assert transformComponent != null;
+               if (!itemsToDrop.isEmpty()) {
+                  TransformComponent transformComponent = store.getComponent(ref, TransformComponent.getComponentType());
 
-               Vector3d position = transformComponent.getPosition();
-               HeadRotation headRotationComponent = store.getComponent(ref, HeadRotation.getComponentType());
+                  assert transformComponent != null;
 
-               assert headRotationComponent != null;
+                  Vector3d position = transformComponent.getPosition();
+                  HeadRotation headRotationComponent = store.getComponent(ref, HeadRotation.getComponentType());
 
-               Vector3f headRotation = headRotationComponent.getRotation();
-               Vector3d dropPosition = position.clone().add(0.0, 1.0, 0.0);
-               Holder<EntityStore>[] drops = ItemComponent.generateItemDrops(store, itemsToDrop, dropPosition, headRotation.clone());
-               commandBuffer.addEntities(drops, AddReason.SPAWN);
+                  assert headRotationComponent != null;
+
+                  Vector3f headRotation = headRotationComponent.getRotation();
+                  Vector3d dropPosition = position.clone().add(0.0, 1.0, 0.0);
+                  Holder<EntityStore>[] drops = ItemComponent.generateItemDrops(store, itemsToDrop, dropPosition, headRotation.clone());
+                  commandBuffer.addEntities(drops, AddReason.SPAWN);
+               }
             }
          }
       }
@@ -245,10 +244,10 @@ public class NPCDamageSystems {
 
          assert npcComponent != null;
 
-         if (damage.getSource() instanceof Damage.EntitySource) {
-            Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-            if (attackerRef.isValid()) {
-               if (!npcComponent.getCanCauseDamage(attackerRef, commandBuffer)) {
+         if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+            Ref<EntityStore> sourceRef = entitySource.getRef();
+            if (sourceRef.isValid()) {
+               if (!npcComponent.getCanCauseDamage(sourceRef, commandBuffer)) {
                   damage.setCancelled(true);
                }
             }

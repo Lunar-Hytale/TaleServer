@@ -188,7 +188,9 @@ public class DamageSystems {
       @Nonnull
       private static final ComponentType<EntityStore, TransformComponent> TRANSFORM_COMPONENT_TYPE = TransformComponent.getComponentType();
       @Nonnull
-      private static final Query<EntityStore> QUERY = TRANSFORM_COMPONENT_TYPE;
+      private static final ComponentType<EntityStore, NetworkId> NETWORK_ID_COMPONENT_TYPE = NetworkId.getComponentType();
+      @Nonnull
+      private static final Query<EntityStore> QUERY = Query.and(TRANSFORM_COMPONENT_TYPE, NETWORK_ID_COMPONENT_TYPE);
 
       @Nonnull
       @Override
@@ -203,20 +205,15 @@ public class DamageSystems {
          @Nonnull CommandBuffer<EntityStore> commandBuffer,
          @Nonnull Damage damage
       ) {
-         TransformComponent transformComponent = archetypeChunk.getComponent(index, TRANSFORM_COMPONENT_TYPE);
-
-         assert transformComponent != null;
-
-         NetworkId networkIdComponent = archetypeChunk.getComponent(index, NetworkId.getComponentType());
-
-         assert networkIdComponent != null;
-
-         int targetNetworkId = networkIdComponent.getId();
          Damage.Particles particles = damage.getIfPresentMetaObject(Damage.IMPACT_PARTICLES);
          if (particles != null) {
             if (damage.getSource() instanceof Damage.EntitySource sourceEntity) {
                Ref<EntityStore> sourceRef = sourceEntity.getRef();
                if (sourceRef.isValid()) {
+                  TransformComponent transformComponent = archetypeChunk.getComponent(index, TRANSFORM_COMPONENT_TYPE);
+
+                  assert transformComponent != null;
+
                   Vector4d hitLocation = damage.getIfPresentMetaObject(Damage.HIT_LOCATION);
                   Vector3d targetPosition = hitLocation == null ? transformComponent.getPosition() : new Vector3d(hitLocation.x, hitLocation.y, hitLocation.z);
                   boolean damageCanBePredicted = damage.getMetaStore().getMetaObject(Damage.CAN_BE_PREDICTED);
@@ -224,21 +221,20 @@ public class DamageSystems {
                   WorldParticle[] worldParticles = particles.getWorldParticles();
                   if (!Arrays.isNullOrEmpty(worldParticles)) {
                      TransformComponent sourceTransformComponent = commandBuffer.getComponent(sourceRef, TransformComponent.getComponentType());
+                     if (sourceTransformComponent != null) {
+                        float angleBetween = TrigMathUtil.atan2(
+                           sourceTransformComponent.getPosition().x - targetPosition.x, sourceTransformComponent.getPosition().z - targetPosition.z
+                        );
+                        SpatialResource<Ref<EntityStore>, EntityStore> playerSpatialResource = commandBuffer.getResource(
+                           EntityModule.get().getPlayerSpatialResourceType()
+                        );
+                        ObjectList<Ref<EntityStore>> results = SpatialResource.getThreadLocalReferenceList();
+                        playerSpatialResource.getSpatialStructure().collect(targetPosition, particlesViewDistance, results);
+                        Ref<EntityStore> particleSource = damageCanBePredicted ? sourceRef : null;
 
-                     assert sourceTransformComponent != null;
-
-                     float angleBetween = TrigMathUtil.atan2(
-                        sourceTransformComponent.getPosition().x - targetPosition.x, sourceTransformComponent.getPosition().z - targetPosition.z
-                     );
-                     SpatialResource<Ref<EntityStore>, EntityStore> playerSpatialResource = commandBuffer.getResource(
-                        EntityModule.get().getPlayerSpatialResourceType()
-                     );
-                     ObjectList<Ref<EntityStore>> results = SpatialResource.getThreadLocalReferenceList();
-                     playerSpatialResource.getSpatialStructure().collect(targetPosition, particlesViewDistance, results);
-                     Ref<EntityStore> particleSource = damageCanBePredicted ? sourceRef : null;
-
-                     for (WorldParticle particle : worldParticles) {
-                        ParticleUtil.spawnParticleEffect(particle, targetPosition, angleBetween, 0.0F, 0.0F, particleSource, results, commandBuffer);
+                        for (WorldParticle particle : worldParticles) {
+                           ParticleUtil.spawnParticleEffect(particle, targetPosition, angleBetween, 0.0F, 0.0F, particleSource, results, commandBuffer);
+                        }
                      }
                   }
 
@@ -250,24 +246,28 @@ public class DamageSystems {
                         modelParticlesProtocol[j] = modelParticles[j].toPacket();
                      }
 
+                     NetworkId networkIdComponent = archetypeChunk.getComponent(index, NETWORK_ID_COMPONENT_TYPE);
+
+                     assert networkIdComponent != null;
+
+                     int targetNetworkId = networkIdComponent.getId();
                      SpawnModelParticles packet = new SpawnModelParticles(targetNetworkId, modelParticlesProtocol);
                      SpatialResource<Ref<EntityStore>, EntityStore> spatialResource = store.getResource(PLAYER_SPATIAL_RESOURCE_TYPE);
                      SpatialStructure<Ref<EntityStore>> spatialStructure = spatialResource.getSpatialStructure();
                      ObjectList<Ref<EntityStore>> results = SpatialResource.getThreadLocalReferenceList();
                      spatialStructure.ordered(targetPosition, particlesViewDistance, results);
-                     ObjectListIterator var35 = results.iterator();
+                     ObjectListIterator var37 = results.iterator();
 
-                     while (var35.hasNext()) {
-                        Ref<EntityStore> targetRef = (Ref<EntityStore>)var35.next();
+                     while (var37.hasNext()) {
+                        Ref<EntityStore> targetRef = (Ref<EntityStore>)var37.next();
                         if (damageCanBePredicted && targetRef.equals(sourceRef)) {
                            return;
                         }
 
                         PlayerRef playerRefComponent = commandBuffer.getComponent(targetRef, PlayerRef.getComponentType());
-
-                        assert playerRefComponent != null;
-
-                        playerRefComponent.getPacketHandler().write(packet);
+                        if (playerRefComponent != null) {
+                           playerRefComponent.getPacketHandler().write(packet);
+                        }
                      }
                   }
                }
@@ -726,15 +726,15 @@ public class DamageSystems {
          @Nonnull CommandBuffer<EntityStore> commandBuffer,
          @Nonnull Damage damage
       ) {
-         if (damage.getCause().isDurabilityLoss() && damage.getSource() instanceof Damage.EntitySource) {
-            Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-            if (attackerRef.isValid()) {
-               if (EntityUtils.getEntity(attackerRef, commandBuffer) instanceof LivingEntity attackerLivingEntity) {
-                  Inventory attackerInventory = attackerLivingEntity.getInventory();
-                  byte activeHotbarSlot = attackerInventory.getActiveHotbarSlot();
+         if (damage.getCause().isDurabilityLoss() && damage.getSource() instanceof Damage.EntitySource entitySource) {
+            Ref<EntityStore> sourceRef = entitySource.getRef();
+            if (sourceRef.isValid()) {
+               if (EntityUtils.getEntity(sourceRef, commandBuffer) instanceof LivingEntity sourceLivingEntity) {
+                  Inventory sourceInventory = sourceLivingEntity.getInventory();
+                  byte activeHotbarSlot = sourceInventory.getActiveHotbarSlot();
                   if (activeHotbarSlot != -1) {
-                     attackerLivingEntity.decreaseItemStackDurability(
-                        attackerRef, attackerInventory.getItemInHand(), -1, attackerInventory.getActiveHotbarSlot(), commandBuffer
+                     sourceLivingEntity.decreaseItemStackDurability(
+                        sourceRef, sourceInventory.getItemInHand(), -1, sourceInventory.getActiveHotbarSlot(), commandBuffer
                      );
                   }
                }
@@ -829,19 +829,18 @@ public class DamageSystems {
          @Nonnull Damage damage
       ) {
          if (!(damage.getAmount() <= 0.0F)) {
-            if (damage.getSource() instanceof Damage.EntitySource) {
-               Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-               if (attackerRef.isValid()) {
-                  PlayerRef playerRef = commandBuffer.getComponent(attackerRef, PlayerRef.getComponentType());
-                  if (playerRef != null && playerRef.isValid()) {
-                     EntityTrackerSystems.EntityViewer entityViewer = commandBuffer.getComponent(
-                        attackerRef, EntityTrackerSystems.EntityViewer.getComponentType()
+            if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+               Ref<EntityStore> sourceRef = entitySource.getRef();
+               if (sourceRef.isValid()) {
+                  PlayerRef sourcePlayerRef = commandBuffer.getComponent(sourceRef, PlayerRef.getComponentType());
+                  if (sourcePlayerRef != null && sourcePlayerRef.isValid()) {
+                     EntityTrackerSystems.EntityViewer sourceEntityViewerComponent = commandBuffer.getComponent(
+                        sourceRef, EntityTrackerSystems.EntityViewer.getComponentType()
                      );
-
-                     assert entityViewer != null;
-
-                     Float hitAngleDeg = damage.getIfPresentMetaObject(Damage.HIT_ANGLE);
-                     queueUpdateFor(archetypeChunk.getReferenceTo(index), damage.getAmount(), hitAngleDeg, entityViewer);
+                     if (sourceEntityViewerComponent != null) {
+                        Float hitAngleDeg = damage.getIfPresentMetaObject(Damage.HIT_ANGLE);
+                        queueUpdateFor(archetypeChunk.getReferenceTo(index), damage.getAmount(), hitAngleDeg, sourceEntityViewerComponent);
+                     }
                   }
                }
             }
@@ -1029,18 +1028,19 @@ public class DamageSystems {
                      MovementConfig movementConfig = MovementConfig.getAssetMap().getAsset(movementConfigIndex);
                      float minFallSpeedToEngageRoll = movementConfig.getMinFallSpeedToEngageRoll();
                      if (yVelocity > minFallSpeedToEngageRoll && !movementStatesEntry.movementStates().inFluid) {
-                        EntityStatMap entityStatMapComponent = archetypeChunk.getComponent(index, EntityStatMap.getComponentType());
+                        double damagePercentagex = Math.pow(0.58F * (yVelocity - minFallSpeedToEngageRoll), 2.0) + 10.0;
+                        EntityStatValue healthStatValuex = entityStatMapComponent.get(DefaultEntityStatTypes.getHealth());
 
-                        assert entityStatMapComponent != null;
+                        assert healthStatValuex != null;
 
-                        double damagePercentage = Math.pow(0.58F * (yVelocity - minFallSpeedToEngageRoll), 2.0) + 10.0;
-                        EntityStatValue healthStatValue = entityStatMapComponent.get(DefaultEntityStatTypes.getHealth());
+                        double damagePercentagex = Math.pow(0.58F * (yVelocity - minFallSpeedToEngageRoll), 2.0) + 10.0;
+                        EntityStatValue healthStatValuex = entityStatMapComponent.get(DefaultEntityStatTypes.getHealth());
 
-                        assert healthStatValue != null;
+                        assert healthStatValuex != null;
 
-                        float maxHealth = healthStatValue.getMax();
+                        float maxHealth = healthStatValuex.getMax();
                         double healthModifier = maxHealth / 100.0;
-                        int damageInt = (int)Math.floor(healthModifier * damagePercentage);
+                        int damageInt = (int)Math.floor(healthModifier * damagePercentagex);
                         if (movementStatesEntry.movementStates().rolling) {
                            if (yVelocity <= movementConfig.getMaxFallSpeedRollFullMitigation()) {
                               damageInt = 0;
@@ -1375,14 +1375,14 @@ public class DamageSystems {
 
          assert playerRefComponent != null;
 
-         if (damage.getSource() instanceof Damage.EntitySource) {
-            Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-            if (attackerRef.isValid()) {
+         if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+            Ref<EntityStore> sourceRef = entitySource.getRef();
+            if (sourceRef.isValid()) {
                DamageCause damageCause = damage.getCause();
                if (damageCause != null) {
-                  TransformComponent attackerTransform = commandBuffer.getComponent(attackerRef, TRANSFORM_COMPONENT_TYPE);
-                  if (attackerTransform != null) {
-                     Vector3d position = attackerTransform.getPosition();
+                  TransformComponent sourceTransformComponent = commandBuffer.getComponent(sourceRef, TRANSFORM_COMPONENT_TYPE);
+                  if (sourceTransformComponent != null) {
+                     Vector3d position = sourceTransformComponent.getPosition();
                      playerRefComponent.getPacketHandler()
                         .writeNoCache(
                            new DamageInfo(
@@ -1471,12 +1471,12 @@ public class DamageSystems {
       ) {
          boolean isDead = archetypeChunk.getArchetype().contains(DeathComponent.getComponentType());
          if (!(damage.getAmount() <= 0.0F)) {
-            if (damage.getSource() instanceof Damage.EntitySource) {
-               Ref<EntityStore> attackerRef = ((Damage.EntitySource)damage.getSource()).getRef();
-               if (attackerRef.isValid()) {
-                  PlayerRef playerRef = commandBuffer.getComponent(attackerRef, PlayerRef.getComponentType());
-                  if (playerRef != null && playerRef.isValid()) {
-                     playerRef.getPacketHandler().writeNoCache(isDead ? ON_KILL : ON_HIT);
+            if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+               Ref<EntityStore> sourceRef = entitySource.getRef();
+               if (sourceRef.isValid()) {
+                  PlayerRef sourcePlayerRef = commandBuffer.getComponent(sourceRef, PlayerRef.getComponentType());
+                  if (sourcePlayerRef != null && sourcePlayerRef.isValid()) {
+                     sourcePlayerRef.getPacketHandler().writeNoCache(isDead ? ON_KILL : ON_HIT);
                   }
                }
             }
@@ -1486,7 +1486,9 @@ public class DamageSystems {
 
    public static class TrackLastDamage extends DamageEventSystem {
       @Nonnull
-      private static final Query<EntityStore> QUERY = AllLegacyLivingEntityTypesQuery.INSTANCE;
+      private static final ComponentType<EntityStore, DamageDataComponent> DAMAGE_DATA_COMPONENT_TYPE = DamageDataComponent.getComponentType();
+      @Nonnull
+      private static final Query<EntityStore> QUERY = Query.and(AllLegacyLivingEntityTypesQuery.INSTANCE, DAMAGE_DATA_COMPONENT_TYPE);
 
       @Nullable
       @Override
@@ -1508,7 +1510,7 @@ public class DamageSystems {
          @Nonnull Damage damage
       ) {
          TimeResource timeResource = commandBuffer.getResource(TimeResource.getResourceType());
-         DamageDataComponent damageDataComponent = archetypeChunk.getComponent(index, DamageDataComponent.getComponentType());
+         DamageDataComponent damageDataComponent = archetypeChunk.getComponent(index, DAMAGE_DATA_COMPONENT_TYPE);
 
          assert damageDataComponent != null;
 
@@ -1565,71 +1567,69 @@ public class DamageSystems {
 
             Vector3d targetPosition = transformComponent.getPosition();
             Vector3f targetRotation = transformComponent.getRotation();
-            if (damage.getSource() instanceof Damage.EntitySource source) {
-               Ref<EntityStore> attackerRef = source.getRef();
-               if (attackerRef.isValid()) {
-                  TransformComponent attackerTransformComponent = commandBuffer.getComponent(attackerRef, TRANSFORM_COMPONENT_TYPE);
+            if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+               Ref<EntityStore> sourceRef = entitySource.getRef();
+               if (sourceRef.isValid()) {
+                  TransformComponent sourceTransformComponent = commandBuffer.getComponent(sourceRef, TRANSFORM_COMPONENT_TYPE);
+                  if (sourceTransformComponent != null) {
+                     int damageCauseIndex = damage.getDamageCauseIndex();
+                     float wieldingModifier = 1.0F;
+                     float angledWieldingModifier = 1.0F;
+                     String blockedInteractions = null;
+                     Int2FloatMap wieldingDamageModifiers = wielding.getDamageModifiers();
+                     if (!wieldingDamageModifiers.isEmpty()) {
+                        wieldingModifier = wieldingDamageModifiers.getOrDefault(damageCauseIndex, 1.0F);
+                        DamageEffects wieldingBlockedEffects = wielding.getBlockedEffects();
+                        if (wieldingBlockedEffects != null) {
+                           wieldingBlockedEffects.addToDamage(damage);
+                        }
 
-                  assert attackerTransformComponent != null;
+                        String wieldingBlockedInteractions = wielding.getBlockedInteractions();
+                        if (wieldingBlockedInteractions != null) {
+                           blockedInteractions = wieldingBlockedInteractions;
+                        }
 
-                  int damageCauseIndex = damage.getDamageCauseIndex();
-                  float wieldingModifier = 1.0F;
-                  float angledWieldingModifier = 1.0F;
-                  String blockedInteractions = null;
-                  Int2FloatMap wieldingDamageModifiers = wielding.getDamageModifiers();
-                  if (!wieldingDamageModifiers.isEmpty()) {
-                     wieldingModifier = wieldingDamageModifiers.getOrDefault(damageCauseIndex, 1.0F);
-                     DamageEffects wieldingBlockedEffects = wielding.getBlockedEffects();
-                     if (wieldingBlockedEffects != null) {
-                        wieldingBlockedEffects.addToDamage(damage);
+                        damage.putMetaObject(Damage.BLOCKED, Boolean.TRUE);
                      }
 
-                     String wieldingBlockedInteractions = wielding.getBlockedInteractions();
-                     if (wieldingBlockedInteractions != null) {
-                        blockedInteractions = wieldingBlockedInteractions;
-                     }
+                     if (angledWielding != null) {
+                        Int2FloatMap angledWieldingDamageModifiers = angledWielding.getDamageModifiers();
+                        if (angledWieldingDamageModifiers.containsKey(damageCauseIndex)) {
+                           Vector3d sourcePosition = sourceTransformComponent.getPosition();
+                           float angleBetween = TrigMathUtil.atan2(sourcePosition.x - targetPosition.x, sourcePosition.z - targetPosition.z);
+                           angleBetween = MathUtil.wrapAngle(angleBetween + (float) Math.PI - targetRotation.getYaw());
+                           if (Math.abs(MathUtil.compareAngle(angleBetween, angledWielding.getAngleRad())) < angledWielding.getAngleDistanceRad()) {
+                              angledWieldingModifier = angledWieldingDamageModifiers.getOrDefault(damageCauseIndex, 1.0F);
+                              DamageEffects wieldingBlockedEffectsx = wielding.getBlockedEffects();
+                              if (wieldingBlockedEffectsx != null) {
+                                 wieldingBlockedEffectsx.addToDamage(damage);
+                              }
 
-                     damage.putMetaObject(Damage.BLOCKED, Boolean.TRUE);
-                  }
+                              String wieldingBlockedInteractions = wielding.getBlockedInteractions();
+                              if (wieldingBlockedInteractions != null) {
+                                 blockedInteractions = wieldingBlockedInteractions;
+                              }
 
-                  if (angledWielding != null) {
-                     Int2FloatMap angledWieldingDamageModifiers = angledWielding.getDamageModifiers();
-                     if (angledWieldingDamageModifiers.containsKey(damageCauseIndex)) {
-                        Vector3d attackerPosition = attackerTransformComponent.getPosition();
-                        float angleBetween = TrigMathUtil.atan2(attackerPosition.x - targetPosition.x, attackerPosition.z - targetPosition.z);
-                        angleBetween = MathUtil.wrapAngle(angleBetween + (float) Math.PI - targetRotation.getYaw());
-                        if (Math.abs(MathUtil.compareAngle(angleBetween, angledWielding.getAngleRad())) < angledWielding.getAngleDistanceRad()) {
-                           angledWieldingModifier = angledWieldingDamageModifiers.getOrDefault(damageCauseIndex, 1.0F);
-                           DamageEffects wieldingBlockedEffectsx = wielding.getBlockedEffects();
-                           if (wieldingBlockedEffectsx != null) {
-                              wieldingBlockedEffectsx.addToDamage(damage);
+                              damage.putMetaObject(Damage.BLOCKED, Boolean.TRUE);
                            }
-
-                           String wieldingBlockedInteractions = wielding.getBlockedInteractions();
-                           if (wieldingBlockedInteractions != null) {
-                              blockedInteractions = wieldingBlockedInteractions;
-                           }
-
-                           damage.putMetaObject(Damage.BLOCKED, Boolean.TRUE);
                         }
                      }
-                  }
 
-                  damage.setAmount(damage.getAmount() * wieldingModifier * angledWieldingModifier);
-                  if (blockedInteractions != null) {
-                     InteractionContext context = InteractionContext.forInteraction(interactionManager, ref, InteractionType.Wielding, commandBuffer);
-                     DynamicMetaStore<InteractionContext> contextMetaStore = context.getMetaStore();
-                     contextMetaStore.putMetaObject(Interaction.TARGET_ENTITY, attackerRef);
-                     contextMetaStore.putMetaObject(Interaction.DAMAGE, damage);
-                     NetworkId attackerNetworkIdComponent = commandBuffer.getComponent(attackerRef, NetworkId.getComponentType());
-
-                     assert attackerNetworkIdComponent != null;
-
-                     int networkId = attackerNetworkIdComponent.getId();
-                     InteractionChain chain = interactionManager.initChain(
-                        InteractionType.Wielding, context, RootInteraction.getRootInteractionOrUnknown(blockedInteractions), networkId, null, false
-                     );
-                     interactionManager.queueExecuteChain(chain);
+                     damage.setAmount(damage.getAmount() * wieldingModifier * angledWieldingModifier);
+                     if (blockedInteractions != null) {
+                        NetworkId sourceNetworkIdComponent = commandBuffer.getComponent(sourceRef, NetworkId.getComponentType());
+                        if (sourceNetworkIdComponent != null) {
+                           InteractionContext context = InteractionContext.forInteraction(interactionManager, ref, InteractionType.Wielding, commandBuffer);
+                           DynamicMetaStore<InteractionContext> contextMetaStore = context.getMetaStore();
+                           contextMetaStore.putMetaObject(Interaction.TARGET_ENTITY, sourceRef);
+                           contextMetaStore.putMetaObject(Interaction.DAMAGE, damage);
+                           int networkId = sourceNetworkIdComponent.getId();
+                           InteractionChain chain = interactionManager.initChain(
+                              InteractionType.Wielding, context, RootInteraction.getRootInteractionOrUnknown(blockedInteractions), networkId, null, false
+                           );
+                           interactionManager.queueExecuteChain(chain);
+                        }
+                     }
                   }
                }
             }
@@ -1688,31 +1688,30 @@ public class DamageSystems {
             WieldingInteraction.AngledWielding angledWielding = wielding.getAngledWielding();
             KnockbackComponent knockbackComponent = damage.getIfPresentMetaObject(Damage.KNOCKBACK_COMPONENT);
             if (knockbackComponent != null) {
-               if (damage.getSource() instanceof Damage.EntitySource source) {
-                  Ref<EntityStore> attackerRef = source.getRef();
-                  if (attackerRef.isValid()) {
-                     TransformComponent attackerTransformComponent = commandBuffer.getComponent(attackerRef, TRANSFORM_COMPONENT_TYPE);
-
-                     assert attackerTransformComponent != null;
-
-                     int damageCauseIndex = damage.getDamageCauseIndex();
-                     double angledWieldingModifier = 1.0;
-                     double wieldingModifier = knockbackModifiers.getOrDefault(damageCauseIndex, 1.0);
-                     if (angledWielding != null) {
-                        Int2DoubleMap angledWieldingKnockbackModifiers = angledWielding.getKnockbackModifiers();
-                        if (angledWieldingKnockbackModifiers.containsKey(damageCauseIndex)) {
-                           Vector3d targetPos = transformComponent.getPosition();
-                           Vector3d attackerPos = attackerTransformComponent.getPosition();
-                           float angleBetween = TrigMathUtil.atan2(attackerPos.x - targetPos.x, attackerPos.z - targetPos.z);
-                           angleBetween = MathUtil.wrapAngle(angleBetween + (float) Math.PI - transformComponent.getRotation().getYaw());
-                           if (Math.abs(MathUtil.compareAngle(angleBetween, angledWielding.getAngleRad())) < angledWielding.getAngleDistanceRad()) {
-                              angledWieldingModifier = angledWieldingKnockbackModifiers.getOrDefault(damageCauseIndex, 1.0);
+               if (damage.getSource() instanceof Damage.EntitySource entitySource) {
+                  Ref<EntityStore> sourceRef = entitySource.getRef();
+                  if (sourceRef.isValid()) {
+                     TransformComponent sourceTransformComponent = commandBuffer.getComponent(sourceRef, TRANSFORM_COMPONENT_TYPE);
+                     if (sourceTransformComponent != null) {
+                        int damageCauseIndex = damage.getDamageCauseIndex();
+                        double angledWieldingModifier = 1.0;
+                        double wieldingModifier = knockbackModifiers.getOrDefault(damageCauseIndex, 1.0);
+                        if (angledWielding != null) {
+                           Int2DoubleMap angledWieldingKnockbackModifiers = angledWielding.getKnockbackModifiers();
+                           if (angledWieldingKnockbackModifiers.containsKey(damageCauseIndex)) {
+                              Vector3d targetPos = transformComponent.getPosition();
+                              Vector3d attackerPos = sourceTransformComponent.getPosition();
+                              float angleBetween = TrigMathUtil.atan2(attackerPos.x - targetPos.x, attackerPos.z - targetPos.z);
+                              angleBetween = MathUtil.wrapAngle(angleBetween + (float) Math.PI - transformComponent.getRotation().getYaw());
+                              if (Math.abs(MathUtil.compareAngle(angleBetween, angledWielding.getAngleRad())) < angledWielding.getAngleDistanceRad()) {
+                                 angledWieldingModifier = angledWieldingKnockbackModifiers.getOrDefault(damageCauseIndex, 1.0);
+                              }
                            }
                         }
-                     }
 
-                     knockbackComponent.addModifier(wieldingModifier);
-                     knockbackComponent.addModifier(angledWieldingModifier);
+                        knockbackComponent.addModifier(wieldingModifier);
+                        knockbackComponent.addModifier(angledWieldingModifier);
+                     }
                   }
                }
             }

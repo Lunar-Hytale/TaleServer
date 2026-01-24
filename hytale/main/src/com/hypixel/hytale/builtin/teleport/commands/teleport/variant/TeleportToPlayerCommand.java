@@ -24,8 +24,6 @@ public class TeleportToPlayerCommand extends AbstractPlayerCommand {
    @Nonnull
    private static final Message MESSAGE_COMMANDS_ERRORS_TARGET_NOT_IN_WORLD = Message.translation("server.commands.errors.targetNotInWorld");
    @Nonnull
-   private static final Message MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_PLAYER = Message.translation("server.commands.teleport.teleportedToPlayer");
-   @Nonnull
    private final RequiredArg<PlayerRef> targetPlayerArg = this.withRequiredArg(
       "targetPlayer", "server.commands.teleport.targetPlayer.desc", ArgTypes.PLAYER_REF
    );
@@ -75,7 +73,9 @@ public class TeleportToPlayerCommand extends AbstractPlayerCommand {
 
                      assert targetPlayerRefComponent != null;
 
-                     context.sendMessage(MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_PLAYER.param("toName", targetPlayerRefComponent.getUsername()));
+                     context.sendMessage(
+                        Message.translation("server.commands.teleport.teleportedToPlayer").param("toName", targetPlayerRefComponent.getUsername())
+                     );
                      store.ensureAndGetComponent(ref, TeleportHistory.getComponentType())
                         .append(world, pos, rotation, "Teleport to " + targetPlayerRefComponent.getUsername());
                   }

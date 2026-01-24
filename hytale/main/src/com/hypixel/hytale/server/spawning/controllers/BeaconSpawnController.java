@@ -74,25 +74,29 @@ public class BeaconSpawnController extends SpawnController<NPCBeaconSpawnJob> {
 
       BeaconSpawnWrapper wrapper = legacySpawnBeaconComponent.getSpawnWrapper();
       RoleSpawnParameters spawn = wrapper.pickRole(ThreadLocalRandom.current());
-      String spawnId = spawn.getId();
-      int roleIndex = NPCPlugin.get().getIndex(spawnId);
-      if (roleIndex >= 0 && !this.unspawnableRoles.contains(roleIndex)) {
-         NPCBeaconSpawnJob job = null;
-         int predictedTotal = this.spawnedEntities.size() + this.activeJobs.size();
-         if (this.activeJobs.size() < this.getMaxActiveJobs()
-            && this.nextPlayerIndex < this.playersInRegion.size()
-            && predictedTotal < this.currentScaledMaxTotalSpawns) {
-            job = this.idleJobs.isEmpty() ? new NPCBeaconSpawnJob() : this.idleJobs.pop();
-            job.beginProbing(this.playersInRegion.get(this.nextPlayerIndex++), this.currentScaledMaxConcurrentSpawns, roleIndex, spawn.getFlockDefinition());
-            this.activeJobs.add(job);
-            if (this.nextPlayerIndex >= this.playersInRegion.size()) {
-               this.nextPlayerIndex = 0;
-            }
-         }
-
-         return job;
-      } else {
+      if (spawn == null) {
          return null;
+      } else {
+         String spawnId = spawn.getId();
+         int roleIndex = NPCPlugin.get().getIndex(spawnId);
+         if (roleIndex >= 0 && !this.unspawnableRoles.contains(roleIndex)) {
+            NPCBeaconSpawnJob job = null;
+            int predictedTotal = this.spawnedEntities.size() + this.activeJobs.size();
+            if (this.activeJobs.size() < this.getMaxActiveJobs()
+               && this.nextPlayerIndex < this.playersInRegion.size()
+               && predictedTotal < this.currentScaledMaxTotalSpawns) {
+               job = this.idleJobs.isEmpty() ? new NPCBeaconSpawnJob() : this.idleJobs.pop();
+               job.beginProbing(this.playersInRegion.get(this.nextPlayerIndex++), this.currentScaledMaxConcurrentSpawns, roleIndex, spawn.getFlockDefinition());
+               this.activeJobs.add(job);
+               if (this.nextPlayerIndex >= this.playersInRegion.size()) {
+                  this.nextPlayerIndex = 0;
+               }
+            }
+
+            return job;
+         } else {
+            return null;
+         }
       }
    }
 

@@ -243,7 +243,7 @@ public class PrefabStore {
          if (this.pack == null) {
             return "Server";
          } else if (this.isBasePack()) {
-            return "Assets";
+            return "HytaleAssets";
          } else {
             PluginManifest manifest = this.pack.getManifest();
             return manifest != null ? manifest.getName() : this.pack.getName();

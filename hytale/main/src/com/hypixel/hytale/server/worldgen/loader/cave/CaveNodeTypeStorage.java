@@ -66,7 +66,7 @@ public class CaveNodeTypeStorage {
          CaveNodeType var5;
          try {
             JsonObject caveNodeJson = JsonParser.parseReader(reader).getAsJsonObject();
-            var5 = new CaveNodeTypeJsonLoader(this.seed, this.dataFolder, caveNodeJson, name, this, this.zoneContext).load();
+            var5 = this.loadCaveNodeType(name, caveNodeJson);
          } catch (Throwable var7) {
             try {
                reader.close();
@@ -82,6 +82,11 @@ public class CaveNodeTypeStorage {
       } catch (Throwable var8) {
          throw new Error(String.format("Error while loading CaveNodeType %s for world generator from %s", name, file.toString()), var8);
       }
+   }
+
+   @Nonnull
+   public CaveNodeType loadCaveNodeType(@Nonnull String name, @Nonnull JsonObject json) {
+      return new CaveNodeTypeJsonLoader(this.seed, this.dataFolder, json, name, this, this.zoneContext).load();
    }
 
    public interface Constants {
