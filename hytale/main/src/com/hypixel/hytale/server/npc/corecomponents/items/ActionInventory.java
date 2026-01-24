@@ -66,7 +66,7 @@ public class ActionInventory extends ActionBase {
             InventoryHelper.clearItemInHand(inventory, (byte)-1);
             return true;
          } else if (this.operation == ActionInventory.Operation.RemoveHeldItem) {
-            InventoryHelper.removeItemInHand(inventory);
+            InventoryHelper.removeItemInHand(inventory, this.count);
             return true;
          } else if (this.operation != ActionInventory.Operation.EquipHotbar || this.item != null && !this.item.isEmpty()) {
             if (this.operation != ActionInventory.Operation.EquipOffHand || this.item != null && !this.item.isEmpty()) {

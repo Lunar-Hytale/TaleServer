@@ -50,18 +50,26 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
          IndexedStorageChunkStorageProvider.class, IndexedStorageChunkStorageProvider::new
       )
       .documentation("Uses the indexed storage file format to store chunks.")
+      .<Boolean>appendInherited(
+         new KeyedCodec<>("FlushOnWrite", Codec.BOOLEAN), (o, i) -> o.flushOnWrite = i, o -> o.flushOnWrite, (o, p) -> o.flushOnWrite = p.flushOnWrite
+      )
+      .documentation(
+         "Controls whether the indexed storage flushes during writes.\nRecommended to be enabled to prevent corruption of chunks during unclean shutdowns."
+      )
+      .add()
       .build();
+   private boolean flushOnWrite = true;
 
    @Nonnull
    @Override
    public IChunkLoader getLoader(@Nonnull Store<ChunkStore> store) {
-      return new IndexedStorageChunkStorageProvider.IndexedStorageChunkLoader(store);
+      return new IndexedStorageChunkStorageProvider.IndexedStorageChunkLoader(store, this.flushOnWrite);
    }
 
    @Nonnull
    @Override
    public IChunkSaver getSaver(@Nonnull Store<ChunkStore> store) {
-      return new IndexedStorageChunkStorageProvider.IndexedStorageChunkSaver(store);
+      return new IndexedStorageChunkStorageProvider.IndexedStorageChunkSaver(store, this.flushOnWrite);
    }
 
    @Nonnull
@@ -141,38 +149,42 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
       }
 
       @Nullable
-      public IndexedStorageFile getOrTryOpen(int regionX, int regionZ) {
+      public IndexedStorageFile getOrTryOpen(int regionX, int regionZ, boolean flushOnWrite) {
          return (IndexedStorageFile)this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
             Path regionFile = this.path.resolve(IndexedStorageChunkStorageProvider.toFileName(regionX, regionZ));
             if (!Files.exists(regionFile)) {
                return null;
             } else {
                try {
-                  return IndexedStorageFile.open(regionFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
-               } catch (FileNotFoundException var7) {
+                  IndexedStorageFile open = IndexedStorageFile.open(regionFile, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                  open.setFlushOnWrite(flushOnWrite);
+                  return open;
+               } catch (FileNotFoundException var8) {
                   return null;
-               } catch (IOException var8) {
-                  throw SneakyThrow.sneakyThrow(var8);
+               } catch (IOException var9) {
+                  throw SneakyThrow.sneakyThrow(var9);
                }
             }
          });
       }
 
       @Nonnull
-      public IndexedStorageFile getOrCreate(int regionX, int regionZ) {
+      public IndexedStorageFile getOrCreate(int regionX, int regionZ, boolean flushOnWrite) {
          return (IndexedStorageFile)this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
             try {
                if (!Files.exists(this.path)) {
                   try {
                      Files.createDirectory(this.path);
-                  } catch (FileAlreadyExistsException var6) {
+                  } catch (FileAlreadyExistsException var8) {
                   }
                }
 
                Path regionFile = this.path.resolve(IndexedStorageChunkStorageProvider.toFileName(regionX, regionZ));
-               return IndexedStorageFile.open(regionFile, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
-            } catch (IOException var7) {
-               throw SneakyThrow.sneakyThrow(var7);
+               IndexedStorageFile open = IndexedStorageFile.open(regionFile, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+               open.setFlushOnWrite(flushOnWrite);
+               return open;
+            } catch (IOException var9) {
+               throw SneakyThrow.sneakyThrow(var9);
             }
          });
       }
@@ -196,7 +208,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
 
                      int regionX = ChunkUtil.xOfChunkIndex(regionIndex);
                      int regionZ = ChunkUtil.zOfChunkIndex(regionIndex);
-                     IndexedStorageFile regionFile = this.getOrTryOpen(regionX, regionZ);
+                     IndexedStorageFile regionFile = this.getOrTryOpen(regionX, regionZ, true);
                      if (regionFile != null) {
                         IntList blobIndexes = regionFile.keys();
                         IntListIterator iterator = blobIndexes.iterator();
@@ -293,8 +305,11 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
    }
 
    public static class IndexedStorageChunkLoader extends BufferChunkLoader implements MetricProvider {
-      public IndexedStorageChunkLoader(@Nonnull Store<ChunkStore> store) {
+      private final boolean flushOnWrite;
+
+      public IndexedStorageChunkLoader(@Nonnull Store<ChunkStore> store, boolean flushOnWrite) {
          super(store);
+         this.flushOnWrite = flushOnWrite;
       }
 
       @Override
@@ -313,7 +328,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
          IndexedStorageChunkStorageProvider.IndexedStorageCache indexedStorageCache = this.getStore()
             .getResource(IndexedStorageChunkStorageProvider.IndexedStorageCache.getResourceType());
          return CompletableFuture.supplyAsync(SneakyThrow.sneakySupplier(() -> {
-            IndexedStorageFile chunks = indexedStorageCache.getOrTryOpen(regionX, regionZ);
+            IndexedStorageFile chunks = indexedStorageCache.getOrTryOpen(regionX, regionZ, this.flushOnWrite);
             return chunks == null ? null : chunks.readBlob(index);
          }));
       }
@@ -334,8 +349,11 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
    }
 
    public static class IndexedStorageChunkSaver extends BufferChunkSaver implements MetricProvider {
-      protected IndexedStorageChunkSaver(@Nonnull Store<ChunkStore> store) {
+      private final boolean flushOnWrite;
+
+      protected IndexedStorageChunkSaver(@Nonnull Store<ChunkStore> store, boolean flushOnWrite) {
          super(store);
+         this.flushOnWrite = flushOnWrite;
       }
 
       @Override
@@ -356,7 +374,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
          IndexedStorageChunkStorageProvider.IndexedStorageCache indexedStorageCache = this.getStore()
             .getResource(IndexedStorageChunkStorageProvider.IndexedStorageCache.getResourceType());
          return CompletableFuture.runAsync(SneakyThrow.sneakyRunnable(() -> {
-            IndexedStorageFile chunks = indexedStorageCache.getOrCreate(regionX, regionZ);
+            IndexedStorageFile chunks = indexedStorageCache.getOrCreate(regionX, regionZ, this.flushOnWrite);
             chunks.writeBlob(index, buffer);
          }));
       }
@@ -372,7 +390,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
          IndexedStorageChunkStorageProvider.IndexedStorageCache indexedStorageCache = this.getStore()
             .getResource(IndexedStorageChunkStorageProvider.IndexedStorageCache.getResourceType());
          return CompletableFuture.runAsync(SneakyThrow.sneakyRunnable(() -> {
-            IndexedStorageFile chunks = indexedStorageCache.getOrTryOpen(regionX, regionZ);
+            IndexedStorageFile chunks = indexedStorageCache.getOrTryOpen(regionX, regionZ, this.flushOnWrite);
             if (chunks != null) {
                chunks.removeBlob(index);
             }

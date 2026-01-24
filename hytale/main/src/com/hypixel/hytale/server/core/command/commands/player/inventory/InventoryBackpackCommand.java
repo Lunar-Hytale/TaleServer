@@ -20,10 +20,6 @@ import javax.annotation.Nonnull;
 
 public class InventoryBackpackCommand extends AbstractPlayerCommand {
    @Nonnull
-   private static final Message MESSAGE_COMMANDS_INVENTORY_BACKPACK_SIZE = Message.translation("server.commands.inventory.backpack.size");
-   @Nonnull
-   private static final Message MESSAGE_COMMANDS_INVENTORY_BACKPACK_RESIZED = Message.translation("server.commands.inventory.backpack.resized");
-   @Nonnull
    private final OptionalArg<Integer> sizeArg = this.withOptionalArg("size", "server.commands.inventorybackpack.size.desc", ArgTypes.INTEGER);
 
    public InventoryBackpackCommand() {
@@ -40,7 +36,7 @@ public class InventoryBackpackCommand extends AbstractPlayerCommand {
 
       Inventory inventory = playerComponent.getInventory();
       if (!this.sizeArg.provided(context)) {
-         context.sendMessage(MESSAGE_COMMANDS_INVENTORY_BACKPACK_SIZE.param("capacity", inventory.getBackpack().getCapacity()));
+         context.sendMessage(Message.translation("server.commands.inventory.backpack.size").param("capacity", inventory.getBackpack().getCapacity()));
       } else {
          short capacity = this.sizeArg.get(context).shortValue();
          ObjectArrayList<ItemStack> remainder = new ObjectArrayList();
@@ -53,7 +49,9 @@ public class InventoryBackpackCommand extends AbstractPlayerCommand {
          }
 
          context.sendMessage(
-            MESSAGE_COMMANDS_INVENTORY_BACKPACK_RESIZED.param("capacity", inventory.getBackpack().getCapacity()).param("dropped", remainder.size())
+            Message.translation("server.commands.inventory.backpack.resized")
+               .param("capacity", inventory.getBackpack().getCapacity())
+               .param("dropped", remainder.size())
          );
       }
    }

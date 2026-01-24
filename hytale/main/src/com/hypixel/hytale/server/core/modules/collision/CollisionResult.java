@@ -268,14 +268,13 @@ public class CollisionResult implements BoxBlockIterator.BoxIterationConsumer {
                   int x = triggerCollision.x;
                   int y = triggerCollision.y;
                   int z = triggerCollision.z;
-                  String blockTypeId = blockType.getId();
                   if (filler != 0) {
                      x -= FillerBlockUtil.unpackX(filler);
                      y -= FillerBlockUtil.unpackY(filler);
                      z -= FillerBlockUtil.unpackZ(filler);
                   }
 
-                  long index = BlockUtil.pack(x, y, z);
+                  long index = BlockUtil.packUnchecked(x, y, z);
                   if (this.newTriggers.add(index)) {
                      BlockPosition pos = new BlockPosition(x, y, z);
                      if (!this.lastTriggers.remove(index) && interactionsEnter != null) {
@@ -292,10 +291,10 @@ public class CollisionResult implements BoxBlockIterator.BoxIterationConsumer {
       }
 
       if (executeTriggers && entity instanceof LivingEntity && !this.lastTriggers.isEmpty()) {
-         LongIterator var26 = this.lastTriggers.iterator();
+         LongIterator var25 = this.lastTriggers.iterator();
 
-         while (var26.hasNext()) {
-            Long old = (Long)var26.next();
+         while (var25.hasNext()) {
+            Long old = (Long)var25.next();
             int xx = BlockUtil.unpackX(old);
             int yx = BlockUtil.unpackY(old);
             int zx = BlockUtil.unpackZ(old);

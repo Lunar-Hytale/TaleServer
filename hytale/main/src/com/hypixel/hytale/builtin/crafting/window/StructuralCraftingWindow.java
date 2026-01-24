@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.hypixel.hytale.builtin.crafting.CraftingPlugin;
 import com.hypixel.hytale.builtin.crafting.component.CraftingManager;
 import com.hypixel.hytale.builtin.crafting.state.BenchState;
+import com.hypixel.hytale.component.ComponentAccessor;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.event.EventRegistration;
@@ -32,7 +33,6 @@ import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
 import com.hypixel.hytale.server.core.inventory.container.SimpleItemContainer;
 import com.hypixel.hytale.server.core.inventory.container.filter.FilterActionType;
 import com.hypixel.hytale.server.core.inventory.container.filter.FilterType;
-import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.SoundUtil;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -42,7 +42,6 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 public class StructuralCraftingWindow extends CraftingWindow implements ItemContainerWindow {
    private static final int MAX_OPTIONS = 64;
@@ -222,13 +221,13 @@ public class StructuralCraftingWindow extends CraftingWindow implements ItemCont
    }
 
    @Override
-   public boolean onOpen0() {
-      super.onOpen0();
-      PlayerRef playerRef = this.getPlayerRef();
-      Ref<EntityStore> ref = playerRef.getReference();
-      Store<EntityStore> store = ref.getStore();
-      Player player = store.getComponent(ref, Player.getComponentType());
-      Inventory inventory = player.getInventory();
+   public boolean onOpen0(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store) {
+      super.onOpen0(ref, store);
+      Player playerComponent = store.getComponent(ref, Player.getComponentType());
+
+      assert playerComponent != null;
+
+      Inventory inventory = playerComponent.getInventory();
       this.inventoryRegistration = inventory.getCombinedHotbarFirst()
          .registerChangeEvent(
             event -> {
@@ -246,16 +245,19 @@ public class StructuralCraftingWindow extends CraftingWindow implements ItemCont
    }
 
    @Override
-   public void onClose0() {
-      super.onClose0();
-      PlayerRef playerRef = this.getPlayerRef();
-      Ref<EntityStore> ref = playerRef.getReference();
-      Store<EntityStore> store = ref.getStore();
-      Player player = store.getComponent(ref, Player.getComponentType());
+   public void onClose0(@Nonnull Ref<EntityStore> ref, @Nonnull ComponentAccessor<EntityStore> componentAccessor) {
+      super.onClose0(ref, componentAccessor);
+      Player playerComponent = componentAccessor.getComponent(ref, Player.getComponentType());
+
+      assert playerComponent != null;
+
       List<ItemStack> itemStacks = this.inputContainer.dropAllItemStacks();
-      SimpleItemContainer.addOrDropItemStacks(store, ref, player.getInventory().getCombinedHotbarFirst(), itemStacks);
-      CraftingManager craftingManager = store.getComponent(ref, CraftingManager.getComponentType());
-      craftingManager.cancelAllCrafting(ref, store);
+      SimpleItemContainer.addOrDropItemStacks(componentAccessor, ref, playerComponent.getInventory().getCombinedHotbarFirst(), itemStacks);
+      CraftingManager craftingManagerComponent = componentAccessor.getComponent(ref, CraftingManager.getComponentType());
+
+      assert craftingManagerComponent != null;
+
+      craftingManagerComponent.cancelAllCrafting(ref, componentAccessor);
       if (this.inventoryRegistration != null) {
          this.inventoryRegistration.unregister();
          this.inventoryRegistration = null;
@@ -311,7 +313,7 @@ public class StructuralCraftingWindow extends CraftingWindow implements ItemCont
       }
    }
 
-   @NullableDecl
+   @Nullable
    private ObjectList<CraftingRecipe> getMatchingRecipes(@Nullable ItemStack inputStack) {
       if (inputStack == null) {
          return null;

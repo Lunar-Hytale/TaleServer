@@ -29,7 +29,6 @@ import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import java.util.Arrays;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 public class MemoriesConditionInteraction extends Interaction {
    @Nonnull
@@ -71,7 +70,7 @@ public class MemoriesConditionInteraction extends Interaction {
 
    @Override
    protected void tick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @NonNullDecl InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       CommandBuffer<EntityStore> commandBuffer = context.getCommandBuffer();
 
@@ -93,7 +92,7 @@ public class MemoriesConditionInteraction extends Interaction {
 
    @Override
    protected void simulateTick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @NonNullDecl InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       int memoriesLevel = context.getServerState().chainingIndex;
       int labelIndex = this.levelToLabel.get(memoriesLevel);

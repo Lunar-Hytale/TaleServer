@@ -297,15 +297,9 @@ public class InstancesPlugin extends JavaPlugin {
       if (spawnProvider == null) {
          throw new IllegalStateException("Spawn provider cannot be null when teleporting player to instance!");
       } else {
-         HeadRotation headRotationComponent = componentAccessor.getComponent(playerRef, HeadRotation.getComponentType());
-
-         assert headRotationComponent != null;
-
-         Vector3f headRotation = headRotationComponent.getRotation();
-         Transform spawnPoint = spawnProvider.getSpawnPoint(targetWorld, playerUUID);
-         Vector3f spawnHeadRotation = headRotation.clone();
-         spawnHeadRotation.setYaw(spawnPoint.getRotation().getYaw());
-         componentAccessor.addComponent(playerRef, Teleport.getComponentType(), new Teleport(targetWorld, spawnPoint).withHeadRotation(spawnHeadRotation));
+         Transform spawnTransform = spawnProvider.getSpawnPoint(targetWorld, playerUUID);
+         Teleport teleportComponent = Teleport.createForPlayer(targetWorld, spawnTransform);
+         componentAccessor.addComponent(playerRef, Teleport.getComponentType(), teleportComponent);
       }
    }
 
@@ -327,7 +321,7 @@ public class InstancesPlugin extends JavaPlugin {
       if (targetWorld == null) {
          throw new IllegalArgumentException("Missing return world");
       } else {
-         Teleport teleportComponent = new Teleport(targetWorld, returnPoint.getReturnPoint());
+         Teleport teleportComponent = Teleport.createForPlayer(targetWorld, returnPoint.getReturnPoint());
          componentAccessor.addComponent(targetRef, Teleport.getComponentType(), teleportComponent);
       }
    }

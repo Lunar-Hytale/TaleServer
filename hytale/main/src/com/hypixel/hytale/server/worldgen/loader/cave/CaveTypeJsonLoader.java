@@ -27,7 +27,6 @@ import com.hypixel.hytale.server.worldgen.loader.context.ZoneFileContext;
 import com.hypixel.hytale.server.worldgen.loader.prefab.BlockPlacementMaskJsonLoader;
 import com.hypixel.hytale.server.worldgen.util.ConstantNoiseProperty;
 import com.hypixel.hytale.server.worldgen.util.condition.BlockMaskCondition;
-import com.hypixel.hytale.server.worldgen.util.condition.DefaultBlockMaskCondition;
 import com.hypixel.hytale.server.worldgen.util.condition.flag.Int2FlagsCondition;
 import java.nio.file.Path;
 import javax.annotation.Nonnull;
@@ -94,12 +93,20 @@ public class CaveTypeJsonLoader extends JsonLoader<SeedStringResource, CaveType>
 
    @Nonnull
    protected CaveNodeType loadEntryNodeType() {
-      if (!this.has("Entry")) {
+      JsonElement entry = this.get("Entry");
+      if (entry == null) {
          throw new IllegalArgumentException("\"Entry\" is not defined. Define an entry node type");
       } else {
-         String entryNodeTypeString = this.get("Entry").getAsString();
          CaveNodeTypeStorage caveNodeTypeStorage = new CaveNodeTypeStorage(this.seed, this.dataFolder, this.caveFolder, this.zoneContext);
-         return caveNodeTypeStorage.loadCaveNodeType(entryNodeTypeString);
+         if (entry.isJsonObject()) {
+            String entryNodeTypeString = this.seed.get().getUniqueName("CaveType#");
+            return caveNodeTypeStorage.loadCaveNodeType(entryNodeTypeString, entry.getAsJsonObject());
+         } else if (entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isString()) {
+            String entryNodeTypeString = entry.getAsString();
+            return caveNodeTypeStorage.loadCaveNodeType(entryNodeTypeString);
+         } else {
+            throw error("Invalid entry node type definition! Expected String or JsonObject: " + entry);
+         }
       }
    }
 
@@ -137,7 +144,7 @@ public class CaveTypeJsonLoader extends JsonLoader<SeedStringResource, CaveType>
 
    @Nullable
    protected BlockMaskCondition loadBlockMask() {
-      BlockMaskCondition placementConfiguration = DefaultBlockMaskCondition.DEFAULT_TRUE;
+      BlockMaskCondition placementConfiguration = BlockMaskCondition.DEFAULT_TRUE;
       if (this.has("BlockMask")) {
          placementConfiguration = new BlockPlacementMaskJsonLoader(this.seed, this.dataFolder, this.getRaw("BlockMask")).load();
       }

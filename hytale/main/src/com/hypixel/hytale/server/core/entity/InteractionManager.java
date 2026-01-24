@@ -8,7 +8,9 @@ import com.hypixel.hytale.component.ComponentAccessor;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.function.function.TriFunction;
 import com.hypixel.hytale.logger.HytaleLogger;
+import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Vector4d;
+import com.hypixel.hytale.metrics.metric.HistoricMetric;
 import com.hypixel.hytale.protocol.BlockPosition;
 import com.hypixel.hytale.protocol.ForkedChainId;
 import com.hypixel.hytale.protocol.GameMode;
@@ -23,6 +25,7 @@ import com.hypixel.hytale.protocol.WaitForDataFrom;
 import com.hypixel.hytale.protocol.packets.interaction.CancelInteractionChain;
 import com.hypixel.hytale.protocol.packets.interaction.SyncInteractionChain;
 import com.hypixel.hytale.protocol.packets.inventory.SetActiveSlot;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.inventory.Inventory;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
@@ -38,8 +41,14 @@ import com.hypixel.hytale.server.core.modules.interaction.interaction.operation.
 import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
+import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.util.UUIDUtil;
+import io.sentry.Sentry;
+import io.sentry.SentryEvent;
+import io.sentry.SentryLevel;
+import io.sentry.protocol.Message;
+import io.sentry.protocol.SentryId;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -49,6 +58,7 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectListIterator;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +96,7 @@ public class InteractionManager implements Component<EntityStore> {
    private final boolean[] globalTimeShiftDirty = new boolean[InteractionType.VALUES.length];
    private boolean timeShiftsDirty;
    private final ObjectList<SyncInteractionChain> syncPackets = new ObjectArrayList();
+   private long currentTime = 1L;
    @Nonnull
    private final ObjectList<InteractionChain> chainStartQueue = new ObjectArrayList();
    @Nonnull
@@ -139,6 +150,7 @@ public class InteractionManager implements Component<EntityStore> {
    }
 
    public void tick(@Nonnull Ref<EntityStore> ref, @Nonnull CommandBuffer<EntityStore> commandBuffer, float dt) {
+      this.currentTime = this.currentTime + commandBuffer.getExternalData().getWorld().getTickStepNanos();
       this.commandBuffer = commandBuffer;
       this.clearAllGlobalTimeShift(dt);
       this.cooldownHandler.tick(dt);
@@ -242,10 +254,10 @@ public class InteractionManager implements Component<EntityStore> {
                if (!this.waitingForClient(ref)) {
                   long queuedTime;
                   if (this.packetQueueTime == 0L) {
-                     this.packetQueueTime = System.nanoTime();
+                     this.packetQueueTime = this.currentTime;
                      queuedTime = 0L;
                   } else {
-                     queuedTime = System.nanoTime() - this.packetQueueTime;
+                     queuedTime = this.currentTime - this.packetQueueTime;
                   }
 
                   HytaleLogger.Api context = LOGGER.at(Level.FINE);
@@ -343,10 +355,10 @@ public class InteractionManager implements Component<EntityStore> {
             if (chain.requiresClient() && chain.getClientState() == InteractionState.NotFinished) {
                if (!this.waitingForClient(ref)) {
                   if (chain.getWaitingForClientFinished() == 0L) {
-                     chain.setWaitingForClientFinished(System.nanoTime());
+                     chain.setWaitingForClientFinished(this.currentTime);
                   }
 
-                  long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - chain.getWaitingForClientFinished());
+                  long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - chain.getWaitingForClientFinished());
                   HytaleLogger.Api context = LOGGER.at(Level.FINE);
                   if (context.isEnabled()) {
                      context.log("Server finished chain but client hasn't! %d, %s, %s", chain.getChainId(), chain, waitMillis);
@@ -404,10 +416,10 @@ public class InteractionManager implements Component<EntityStore> {
                }
             } else if (chain.getClientState() != InteractionState.NotFinished && !this.waitingForClient(ref)) {
                if (chain.getWaitingForServerFinished() == 0L) {
-                  chain.setWaitingForServerFinished(System.nanoTime());
+                  chain.setWaitingForServerFinished(this.currentTime);
                }
 
-               long waitMillisx = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - chain.getWaitingForServerFinished());
+               long waitMillisx = TimeUnit.NANOSECONDS.toMillis(this.currentTime - chain.getWaitingForServerFinished());
                HytaleLogger.Api contextxx = LOGGER.at(Level.FINE);
                if (contextxx.isEnabled()) {
                   contextxx.log("Client finished chain but server hasn't! %d, %s, %s", chain.getChainId(), chain, waitMillisx);
@@ -445,7 +457,7 @@ public class InteractionManager implements Component<EntityStore> {
                try {
                   context.initEntry(chain, entry, this.entity);
                   TimeResource timeResource = this.commandBuffer.getResource(TimeResource.getResourceType());
-                  operation.handle(ref, false, entry.getTimeInSeconds(System.nanoTime()) * timeResource.getTimeDilationModifier(), chain.getType(), context);
+                  operation.handle(ref, false, entry.getTimeInSeconds(this.currentTime) * timeResource.getTimeDilationModifier(), chain.getType(), context);
                } finally {
                   context.deinitEntry(chain, entry, this.entity);
                }
@@ -481,7 +493,7 @@ public class InteractionManager implements Component<EntityStore> {
          while (true) {
             Operation simOp = !this.hasRemoteClient ? root.getOperation(chain.getSimulatedOperationCounter()) : null;
             WaitForDataFrom simWaitFrom = simOp != null ? simOp.getWaitForDataFrom() : null;
-            long tickTime = System.nanoTime();
+            long tickTime = this.currentTime;
             if (!this.hasRemoteClient && simWaitFrom != WaitForDataFrom.Server) {
                this.simulationTick(ref, chain, tickTime);
             }
@@ -622,10 +634,10 @@ public class InteractionManager implements Component<EntityStore> {
          return null;
       } else {
          if (entry.getWaitingForSyncData() == 0L) {
-            entry.setWaitingForSyncData(System.nanoTime());
+            entry.setWaitingForSyncData(this.currentTime);
          }
 
-         long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - entry.getWaitingForSyncData());
+         long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - entry.getWaitingForSyncData());
          HytaleLogger.Api contextx = LOGGER.at(Level.FINE);
          if (contextx.isEnabled()) {
             contextx.log("Wait for interaction clientData: %d, %s, %s", chain.getOperationIndex(), entry, waitMillis);
@@ -633,20 +645,42 @@ public class InteractionManager implements Component<EntityStore> {
 
          long threshold = this.getOperationTimeoutThreshold();
          if (tickTimeDilation == 1.0F && waitMillis > threshold) {
-            throw new RuntimeException(
-               "Client took too long to send clientData! Millis: "
-                  + waitMillis
-                  + ", Threshold: "
-                  + threshold
-                  + ",\nChain: "
-                  + chain
-                  + ",\nEntry: "
-                  + chain.getOperationIndex()
-                  + ", "
-                  + entry
-                  + ",\nWaiting for data from: "
-                  + operation.getWaitForDataFrom()
-            );
+            SentryEvent event = new SentryEvent();
+            event.setLevel(SentryLevel.ERROR);
+            Message message = new Message();
+            message.setMessage("Client failed to send client data, ending early to prevent desync");
+            HashMap<String, Object> unknown = new HashMap<>();
+            unknown.put("Threshold", threshold);
+            unknown.put("Wait Millis", waitMillis);
+            unknown.put("Current Root", chain.getRootInteraction() != null ? chain.getRootInteraction().getId() : "<null>");
+            Operation innerOp = operation.getInnerOperation();
+            unknown.put("Current Op", innerOp.getClass().getName());
+            if (innerOp instanceof Interaction interaction) {
+               unknown.put("Current Interaction", interaction.getId());
+            }
+
+            unknown.put("Current Index", chain.getOperationIndex());
+            unknown.put("Current Op Counter", chain.getOperationCounter());
+            HistoricMetric metric = ref.getStore().getExternalData().getWorld().getBufferedTickLengthMetricSet();
+            long[] periods = metric.getPeriodsNanos();
+
+            for (int i = 0; i < periods.length; i++) {
+               String length = FormatUtil.timeUnitToString(periods[i], TimeUnit.NANOSECONDS, true);
+               double average = metric.getAverage(i);
+               long min = metric.calculateMin(i);
+               long max = metric.calculateMax(i);
+               String value = FormatUtil.simpleTimeUnitFormat(min, average, max, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS, 3);
+               unknown.put(String.format("World Perf %s", length), value);
+            }
+
+            event.setExtras(unknown);
+            event.setMessage(message);
+            SentryId eventId = Sentry.captureEvent(event);
+            ((HytaleLogger.Api)LOGGER.atWarning()).log("Client failed to send client data, ending early to prevent desync. %s", eventId);
+            chain.setServerState(InteractionState.Failed);
+            chain.setClientState(InteractionState.Failed);
+            this.sendCancelPacket(chain);
+            return null;
          } else {
             if (entry.consumeSendInitial() || wasWrong) {
                returnData = entry.getServerState();
@@ -670,10 +704,10 @@ public class InteractionManager implements Component<EntityStore> {
          }
       } else if (entry.getClientState() != null && entry.getClientState().state != InteractionState.NotFinished && !this.waitingForClient(ref)) {
          if (entry.getWaitingForServerFinished() == 0L) {
-            entry.setWaitingForServerFinished(System.nanoTime());
+            entry.setWaitingForServerFinished(this.currentTime);
          }
 
-         long waitMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - entry.getWaitingForServerFinished());
+         long waitMillis = TimeUnit.NANOSECONDS.toMillis(this.currentTime - entry.getWaitingForServerFinished());
          HytaleLogger.Api context = LOGGER.at(Level.FINE);
          if (context.isEnabled()) {
             context.log("Client finished interaction but server hasn't! %s, %d, %s, %s", entry.getClientState().state, entry.getIndex(), entry, waitMillis);
@@ -774,7 +808,7 @@ public class InteractionManager implements Component<EntityStore> {
                Ref<EntityStore> proxyTarget = world.getEntityStore().getRefFromUUID(proxyId);
                if (proxyTarget == null) {
                   if (this.packetQueueTime != 0L
-                     && System.nanoTime() - this.packetQueueTime > TimeUnit.MILLISECONDS.toNanos(this.getOperationTimeoutThreshold()) / 2L) {
+                     && this.currentTime - this.packetQueueTime > TimeUnit.MILLISECONDS.toNanos(this.getOperationTimeoutThreshold()) / 2L) {
                      HytaleLogger.Api ctx = LOGGER.at(Level.FINE);
                      if (ctx.isEnabled()) {
                         ctx.log("Proxy entity never spawned");
@@ -880,6 +914,28 @@ public class InteractionManager implements Component<EntityStore> {
                         BlockPosition targetBlock = world.getBaseBlock(packet.data.blockPosition);
                         context.getMetaStore().putMetaObject(Interaction.TARGET_BLOCK, targetBlock);
                         context.getMetaStore().putMetaObject(Interaction.TARGET_BLOCK_RAW, packet.data.blockPosition);
+                        if (!packet.data.blockPosition.equals(targetBlock)) {
+                           WorldChunk otherChunk = world.getChunkIfInMemory(
+                              ChunkUtil.indexChunkFromBlock(packet.data.blockPosition.x, packet.data.blockPosition.z)
+                           );
+                           if (otherChunk == null) {
+                              HytaleLogger.Api ctxxx = LOGGER.at(Level.FINE);
+                              if (ctxxx.isEnabled()) {
+                                 ctxxx.log("Unloaded chunk interacted with: %d, %s", index, type);
+                              }
+
+                              this.sendCancelPacket(index, packet.forkedId);
+                              return true;
+                           }
+
+                           int blockId = world.getBlock(targetBlock.x, targetBlock.y, targetBlock.z);
+                           int otherBlockId = world.getBlock(packet.data.blockPosition.x, packet.data.blockPosition.y, packet.data.blockPosition.z);
+                           if (blockId != otherBlockId) {
+                              otherChunk.setBlock(
+                                 packet.data.blockPosition.x, packet.data.blockPosition.y, packet.data.blockPosition.z, 0, BlockType.EMPTY, 0, 0, 1052
+                              );
+                           }
+                        }
                      }
 
                      if (packet.data.entityId >= 0) {
@@ -955,7 +1011,7 @@ public class InteractionManager implements Component<EntityStore> {
                            "%d, %d: Time (Sync) - Server: %s vs Client: %s",
                            packet.chainId,
                            index,
-                           interaction.getTimeInSeconds(System.nanoTime()) * tickTimeDilation,
+                           interaction.getTimeInSeconds(this.currentTime) * tickTimeDilation,
                            interaction.getClientState().progress
                         );
                      }
@@ -1184,12 +1240,35 @@ public class InteractionManager implements Component<EntityStore> {
       Player playerComponent = this.commandBuffer.getComponent(ref, Player.getComponentType());
       GameMode gameMode = playerComponent != null ? playerComponent.getGameMode() : GameMode.Adventure;
       RootInteractionSettings settings = root.getSettings().get(gameMode);
-      if (settings != null && settings.allowSkipChainOnClick && remote) {
-         this.cooldownHandler.resetCooldown(cooldownId, cooldownTime, cooldownChargeTimes, interruptRecharge);
-         return false;
-      } else {
-         return this.cooldownHandler.isOnCooldown(root, cooldownId, cooldownTime, cooldownChargeTimes, interruptRecharge);
+      if (settings != null) {
+         cooldown = settings.cooldown;
+         if (cooldown != null) {
+            cooldownTime = cooldown.cooldown;
+            if (cooldown.chargeTimes != null && cooldown.chargeTimes.length > 0) {
+               cooldownChargeTimes = cooldown.chargeTimes;
+            }
+
+            if (cooldown.cooldownId != null) {
+               cooldownId = cooldown.cooldownId;
+            }
+
+            if (cooldown.interruptRecharge) {
+               interruptRecharge = true;
+            }
+
+            if (cooldown.clickBypass && remote) {
+               this.cooldownHandler.resetCooldown(cooldownId, cooldownTime, cooldownChargeTimes, interruptRecharge);
+               return false;
+            }
+         }
+
+         if (settings.allowSkipChainOnClick && remote) {
+            this.cooldownHandler.resetCooldown(cooldownId, cooldownTime, cooldownChargeTimes, interruptRecharge);
+            return false;
+         }
       }
+
+      return this.cooldownHandler.isOnCooldown(root, cooldownId, cooldownTime, cooldownChargeTimes, interruptRecharge);
    }
 
    public void tryRunHeldInteraction(@Nonnull Ref<EntityStore> ref, @Nonnull CommandBuffer<EntityStore> commandBuffer, @Nonnull InteractionType type) {

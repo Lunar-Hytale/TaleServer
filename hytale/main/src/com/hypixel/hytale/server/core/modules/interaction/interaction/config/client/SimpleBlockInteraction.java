@@ -33,7 +33,6 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.util.TargetUtil;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 public abstract class SimpleBlockInteraction extends SimpleInteraction {
    @Nonnull
@@ -130,7 +129,7 @@ public abstract class SimpleBlockInteraction extends SimpleInteraction {
 
    @Override
    protected void simulateTick0(
-      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       if (firstRun) {
          Ref<EntityStore> ref = context.getEntity();
@@ -184,7 +183,11 @@ public abstract class SimpleBlockInteraction extends SimpleInteraction {
    protected void computeCurrentBlockSyncData(@Nonnull InteractionContext context) {
       BlockPosition targetBlockPos = context.getTargetBlock();
       if (targetBlockPos != null) {
-         World world = context.getCommandBuffer().getStore().getExternalData().getWorld();
+         CommandBuffer<EntityStore> commandBuffer = context.getCommandBuffer();
+
+         assert commandBuffer != null;
+
+         World world = commandBuffer.getStore().getExternalData().getWorld();
          ChunkStore chunkStore = world.getChunkStore();
          long chunkIndex = ChunkUtil.indexChunkFromBlock(targetBlockPos.x, targetBlockPos.z);
          Ref<ChunkStore> chunkReference = chunkStore.getChunkReference(chunkIndex);

@@ -12,6 +12,27 @@
     <artifactId>Server</artifactId>
     <version>${revision}</version>
 
+    <!-- Maven repository metadata -->
+    <name>Hytale Server</name>
+    <description>Hytale dedicated game server</description>
+    <url>https://hytale.com</url>
+    <licenses>
+        <license>
+            <name>Hypixel Studios Proprietary License</name>
+            <url>https://hytale.com/terms-of-service</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Hypixel Studios</name>
+            <organization>Hypixel Studios</organization>
+            <organizationUrl>https://hypixelstudios.com</organizationUrl>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://hytale.com</url>
+    </scm>
+
     <dependencies>
         <dependency>
             <groupId>com.hypixel.hytale</groupId>
@@ -454,6 +475,23 @@
                             <pomElements>
                                 <dependencies>expand</dependencies>
                                 <parent>resolve</parent>
+                                <version>resolve</version>
+                                <profiles>remove</profiles>
+                            </pomElements>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- For Maven repository publishing - removes all dependencies since jar is shaded -->
+                        <id>flatten-for-publish</id>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                        <configuration>
+                            <flattenedPomFilename>flattened-pom.xml</flattenedPomFilename>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <pomElements>
+                                <dependencies>remove</dependencies>
+                                <parent>remove</parent>
                                 <version>resolve</version>
                                 <profiles>remove</profiles>
                             </pomElements>

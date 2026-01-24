@@ -18,17 +18,22 @@ import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.spatial.SpatialResource;
+import com.hypixel.hytale.component.spatial.SpatialStructure;
 import com.hypixel.hytale.component.system.tick.EntityTickingSystem;
 import com.hypixel.hytale.math.util.MathUtil;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.protocol.GameMode;
+import com.hypixel.hytale.protocol.packets.entities.SpawnModelParticles;
 import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.asset.type.model.config.ModelParticle;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.modules.entity.EntityModule;
 import com.hypixel.hytale.server.core.modules.entity.component.BoundingBox;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.item.ItemComponent;
 import com.hypixel.hytale.server.core.modules.entity.item.PickupItemComponent;
+import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.modules.i18n.I18nModule;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
@@ -230,6 +235,7 @@ public class NPCMemory extends Memory {
 
                assert playerRefComponent != null;
 
+               Ref<EntityStore> ref = archetypeChunk.getReferenceTo(index);
                MemoriesPlugin memoriesPlugin = MemoriesPlugin.get();
                PlayerMemories playerMemoriesComponent = archetypeChunk.getComponent(index, PlayerMemories.getComponentType());
 
@@ -238,10 +244,10 @@ public class NPCMemory extends Memory {
                NPCMemory temp = new NPCMemory();
                World world = commandBuffer.getExternalData().getWorld();
                String foundLocationZoneNameKey = findLocationZoneName(world, position);
-               ObjectListIterator var17 = results.iterator();
+               ObjectListIterator var18 = results.iterator();
 
-               while (var17.hasNext()) {
-                  Ref<EntityStore> npcRef = (Ref<EntityStore>)var17.next();
+               while (var18.hasNext()) {
+                  Ref<EntityStore> npcRef = (Ref<EntityStore>)var18.next();
                   NPCEntity npcComponent = commandBuffer.getComponent(npcRef, NPCEntity.getComponentType());
                   if (npcComponent != null) {
                      Role role = npcComponent.getRole();
@@ -272,17 +278,22 @@ public class NPCMemory extends Memory {
                               if (memoriesGameplayConfig != null) {
                                  ItemStack memoryItemStack = new ItemStack(memoriesGameplayConfig.getMemoriesCatchItemId());
                                  Vector3d memoryItemHolderPosition = npcTransformComponent.getPosition().clone();
-                                 BoundingBox boundingBox = commandBuffer.getComponent(npcRef, BoundingBox.getComponentType());
-                                 if (boundingBox != null) {
-                                    memoryItemHolderPosition.y = memoryItemHolderPosition.y + boundingBox.getBoundingBox().middleY();
+                                 BoundingBox boundingBoxComponent = commandBuffer.getComponent(npcRef, BoundingBox.getComponentType());
+                                 if (boundingBoxComponent != null) {
+                                    memoryItemHolderPosition.y = memoryItemHolderPosition.y + boundingBoxComponent.getBoundingBox().middleY();
                                  }
 
                                  Holder<EntityStore> memoryItemHolder = ItemComponent.generatePickedUpItem(
-                                    memoryItemStack, memoryItemHolderPosition, commandBuffer, playerRefComponent.getReference()
+                                    memoryItemStack, memoryItemHolderPosition, commandBuffer, ref
                                  );
                                  float memoryCatchItemLifetimeS = 0.62F;
-                                 memoryItemHolder.getComponent(PickupItemComponent.getComponentType()).setInitialLifeTime(memoryCatchItemLifetimeS);
+                                 PickupItemComponent pickupItemComponent = memoryItemHolder.getComponent(PickupItemComponent.getComponentType());
+
+                                 assert pickupItemComponent != null;
+
+                                 pickupItemComponent.setInitialLifeTime(0.62F);
                                  commandBuffer.addEntity(memoryItemHolder, AddReason.SPAWN);
+                                 displayCatchEntityParticles(memoriesGameplayConfig, memoryItemHolderPosition, npcRef, commandBuffer);
                               }
                            }
                         }
@@ -308,6 +319,33 @@ public class NPCMemory extends Memory {
             }
 
             return "???";
+         }
+      }
+
+      private static void displayCatchEntityParticles(
+         MemoriesGameplayConfig memoriesGameplayConfig, Vector3d targetPosition, Ref<EntityStore> targetRef, @Nonnull CommandBuffer<EntityStore> commandBuffer
+      ) {
+         ModelParticle particle = memoriesGameplayConfig.getMemoriesCatchEntityParticle();
+         if (particle != null) {
+            NetworkId networkIdComponent = commandBuffer.getComponent(targetRef, NetworkId.getComponentType());
+            if (networkIdComponent != null) {
+               com.hypixel.hytale.protocol.ModelParticle[] modelParticlesProtocol = new com.hypixel.hytale.protocol.ModelParticle[]{particle.toPacket()};
+               SpawnModelParticles packet = new SpawnModelParticles(networkIdComponent.getId(), modelParticlesProtocol);
+               SpatialResource<Ref<EntityStore>, EntityStore> spatialResource = commandBuffer.getResource(EntityModule.get().getPlayerSpatialResourceType());
+               SpatialStructure<Ref<EntityStore>> spatialStructure = spatialResource.getSpatialStructure();
+               ObjectList<Ref<EntityStore>> results = SpatialResource.getThreadLocalReferenceList();
+               spatialStructure.ordered(targetPosition, memoriesGameplayConfig.getMemoriesCatchParticleViewDistance(), results);
+               ObjectListIterator var11 = results.iterator();
+
+               while (var11.hasNext()) {
+                  Ref<EntityStore> ref = (Ref<EntityStore>)var11.next();
+                  PlayerRef playerRefComponent = commandBuffer.getComponent(ref, PlayerRef.getComponentType());
+
+                  assert playerRefComponent != null;
+
+                  playerRefComponent.getPacketHandler().write(packet);
+               }
+            }
          }
       }
 

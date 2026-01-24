@@ -116,7 +116,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 public class AssetEditorPlugin extends JavaPlugin {
    private static AssetEditorPlugin instance;
@@ -146,7 +145,7 @@ public class AssetEditorPlugin extends JavaPlugin {
       super(init);
    }
 
-   @NullableDecl
+   @Nullable
    DataSource registerDataSourceForPack(AssetPack assetPack) {
       PluginManifest manifest = assetPack.getManifest();
       if (manifest == null) {

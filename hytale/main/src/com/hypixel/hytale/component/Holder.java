@@ -355,6 +355,37 @@ public class Holder<ECS_TYPE> {
       return var9;
    }
 
+   public Holder<ECS_TYPE> cloneSerializable(@Nonnull ComponentRegistry.Data<ECS_TYPE> data) {
+      assert this.archetype != null;
+
+      assert this.components != null;
+
+      assert this.registry != null;
+
+      long stamp = this.lock.readLock();
+
+      Holder var11;
+      try {
+         Archetype<ECS_TYPE> serializableArchetype = this.archetype.getSerializableArchetype(data);
+         Component<ECS_TYPE>[] componentsClone = new Component[serializableArchetype.length()];
+
+         for (int i = serializableArchetype.getMinIndex(); i < serializableArchetype.length(); i++) {
+            ComponentType<ECS_TYPE, ? extends Component<ECS_TYPE>> componentType = (ComponentType<ECS_TYPE, ? extends Component<ECS_TYPE>>)serializableArchetype.get(
+               i
+            );
+            if (componentType != null) {
+               componentsClone[i] = this.components[i].cloneSerializable();
+            }
+         }
+
+         var11 = this.registry.newHolder(serializableArchetype, componentsClone);
+      } finally {
+         this.lock.unlockRead(stamp);
+      }
+
+      return var11;
+   }
+
    void loadComponentsMap(@Nonnull ComponentRegistry.Data<ECS_TYPE> data, @Nonnull Map<String, Component<ECS_TYPE>> map) {
       assert this.components != null;
 

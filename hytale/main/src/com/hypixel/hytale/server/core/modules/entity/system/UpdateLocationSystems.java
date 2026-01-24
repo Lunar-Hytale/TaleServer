@@ -136,14 +136,14 @@ public class UpdateLocationSystems {
       } else {
          LOGGER.at(Level.SEVERE).log("Player is in a chunk that can't be loaded! Moving (-%d,0,0)! %s", 32, transformComponent);
          Vector3d position = transformComponent.getPosition();
-         Vector3f bodyRotation = transformComponent.getRotation();
          Vector3d targetPosition = position.clone().subtract(32.0, 0.0, 0.0);
+         Vector3f bodyRotation = transformComponent.getRotation();
+         Teleport teleportComponent = Teleport.createForPlayer(targetPosition, bodyRotation);
+         entityComponentAccessor.addComponent(ref, Teleport.getComponentType(), teleportComponent);
          PlayerRef playerRefComponent = entityComponentAccessor.getComponent(ref, PlayerRef.getComponentType());
-
-         assert playerRefComponent != null;
-
-         entityComponentAccessor.addComponent(ref, Teleport.getComponentType(), new Teleport(targetPosition, bodyRotation));
-         playerRefComponent.sendMessage(MESSAGE_GENERAL_PLAYER_IN_INVALID_CHUNK);
+         if (playerRefComponent != null) {
+            playerRefComponent.sendMessage(MESSAGE_GENERAL_PLAYER_IN_INVALID_CHUNK);
+         }
       }
    }
 

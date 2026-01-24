@@ -42,7 +42,6 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleMap.Entry;
 import java.util.Iterator;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 public class WieldingInteraction extends ChargingInteraction {
    public static final float WIELDING_INDEX = 0.0F;
@@ -173,7 +172,7 @@ public class WieldingInteraction extends ChargingInteraction {
 
    @Override
    protected void tick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       CommandBuffer<EntityStore> commandBuffer = context.getCommandBuffer();
 
@@ -216,7 +215,7 @@ public class WieldingInteraction extends ChargingInteraction {
 
    @Override
    protected void simulateTick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       CommandBuffer<EntityStore> commandBuffer = context.getCommandBuffer();
 

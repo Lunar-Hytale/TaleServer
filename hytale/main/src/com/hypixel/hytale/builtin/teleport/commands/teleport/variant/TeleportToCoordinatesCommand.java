@@ -24,12 +24,6 @@ import javax.annotation.Nonnull;
 
 public class TeleportToCoordinatesCommand extends AbstractPlayerCommand {
    @Nonnull
-   private static final Message MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_COORDINATES_WITH_LOOK = Message.translation(
-      "server.commands.teleport.teleportedToCoordinatesWithLook"
-   );
-   @Nonnull
-   private static final Message MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_COORDINATES = Message.translation("server.commands.teleport.teleportedToCoordinates");
-   @Nonnull
    private final RequiredArg<Coord> xArg = this.withRequiredArg("x", "server.commands.teleport.x.desc", ArgTypes.RELATIVE_DOUBLE_COORD);
    @Nonnull
    private final RequiredArg<Coord> yArg = this.withRequiredArg("y", "server.commands.teleport.y.desc", ArgTypes.RELATIVE_DOUBLE_COORD);
@@ -77,8 +71,8 @@ public class TeleportToCoordinatesCommand extends AbstractPlayerCommand {
       float roll = this.rollArg.provided(context)
          ? this.rollArg.get(context).resolve(previousHeadRotation.getRoll() * (180.0F / (float)Math.PI)) * (float) (Math.PI / 180.0)
          : Float.NaN;
-      Teleport teleport = new Teleport(new Vector3d(x, y, z), new Vector3f(previousBodyRotation.getPitch(), yaw, previousBodyRotation.getRoll()))
-         .withHeadRotation(new Vector3f(pitch, yaw, roll));
+      Teleport teleport = Teleport.createForPlayer(new Vector3d(x, y, z), new Vector3f(previousBodyRotation.getPitch(), yaw, previousBodyRotation.getRoll()))
+         .setHeadRotation(new Vector3f(pitch, yaw, roll));
       store.addComponent(ref, Teleport.getComponentType(), teleport);
       boolean hasRotation = this.yawArg.provided(context) || this.pitchArg.provided(context) || this.rollArg.provided(context);
       if (hasRotation) {
@@ -86,7 +80,8 @@ public class TeleportToCoordinatesCommand extends AbstractPlayerCommand {
          float displayPitch = Float.isNaN(pitch) ? previousHeadRotation.getPitch() * (180.0F / (float)Math.PI) : pitch * (180.0F / (float)Math.PI);
          float displayRoll = Float.isNaN(roll) ? previousHeadRotation.getRoll() * (180.0F / (float)Math.PI) : roll * (180.0F / (float)Math.PI);
          context.sendMessage(
-            MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_COORDINATES_WITH_LOOK.param("x", x)
+            Message.translation("server.commands.teleport.teleportedToCoordinatesWithLook")
+               .param("x", x)
                .param("y", y)
                .param("z", z)
                .param("yaw", displayYaw)
@@ -94,7 +89,7 @@ public class TeleportToCoordinatesCommand extends AbstractPlayerCommand {
                .param("roll", displayRoll)
          );
       } else {
-         context.sendMessage(MESSAGE_COMMANDS_TELEPORT_TELEPORTED_TO_COORDINATES.param("x", x).param("y", y).param("z", z));
+         context.sendMessage(Message.translation("server.commands.teleport.teleportedToCoordinates").param("x", x).param("y", y).param("z", z));
       }
 
       store.ensureAndGetComponent(ref, TeleportHistory.getComponentType())

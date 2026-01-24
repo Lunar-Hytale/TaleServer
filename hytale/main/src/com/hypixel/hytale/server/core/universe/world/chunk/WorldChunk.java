@@ -38,6 +38,7 @@ import com.hypixel.hytale.server.core.universe.world.meta.state.ItemContainerSta
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.util.FillerBlockUtil;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.StampedLock;
 import java.util.logging.Level;
@@ -62,7 +63,7 @@ public class WorldChunk implements BlockAccessor, Component<ChunkStore> {
    private int activeTimer = 15;
    private boolean needsSaving;
    private boolean isSaving;
-   private boolean keepLoaded;
+   private final AtomicInteger keepLoaded = new AtomicInteger();
    private boolean lightingUpdatesEnabled = true;
    @Deprecated
    public final AtomicLong chunkLightTiming = new AtomicLong();
@@ -284,11 +285,15 @@ public class WorldChunk implements BlockAccessor, Component<ChunkStore> {
    }
 
    public boolean shouldKeepLoaded() {
-      return this.keepLoaded;
+      return this.keepLoaded.get() > 0;
    }
 
-   public void setKeepLoaded(boolean keepLoaded) {
-      this.keepLoaded = keepLoaded;
+   public void addKeepLoaded() {
+      this.keepLoaded.incrementAndGet();
+   }
+
+   public void removeKeepLoaded() {
+      this.keepLoaded.decrementAndGet();
    }
 
    public int pollKeepAlive(int pollCount) {
@@ -323,6 +328,7 @@ public class WorldChunk implements BlockAccessor, Component<ChunkStore> {
          short oldHeight = this.blockChunk.getHeight(x, z);
          BlockSection blockSection = this.blockChunk.getSectionAtBlockY(y);
          int oldRotation = blockSection.getRotationIndex(x, y, z);
+         int oldFiller = blockSection.getFiller(x, y, z);
          int oldBlock = blockSection.get(x, y, z);
          boolean changed = (oldBlock != id || rotation != oldRotation) && blockSection.set(x, y, z, id, rotation, filler);
          if (changed || (settings & 64) != 0) {
@@ -400,11 +406,14 @@ public class WorldChunk implements BlockAccessor, Component<ChunkStore> {
                int settingsWithoutFiller = settings | 8 | 16;
                BlockType oldBlockType = blockTypeAssetMap.getAsset(oldBlock);
                String oldBlockKey = oldBlockType.getId();
+               int baseX = worldX - FillerBlockUtil.unpackX(oldFiller);
+               int baseY = y - FillerBlockUtil.unpackY(oldFiller);
+               int baseZ = worldZ - FillerBlockUtil.unpackZ(oldFiller);
                FillerBlockUtil.forEachFillerBlock(hitboxAssetMap.getAsset(oldBlockType.getHitboxTypeIndex()).get(oldRotation), (x1, y1, z1) -> {
                   if (x1 != 0 || y1 != 0 || z1 != 0) {
-                     int blockX = worldX + x1;
-                     int blockY = y + y1;
-                     int blockZ = worldZ + z1;
+                     int blockX = baseX + x1;
+                     int blockY = baseY + y1;
+                     int blockZ = baseZ + z1;
                      if (ChunkUtil.isSameChunk(worldX, worldZ, blockX, blockZ)) {
                         String blockTypeKey1 = this.getBlockType(blockX, blockY, blockZ).getId();
                         if (blockTypeKey1.equals(oldBlockKey)) {
@@ -552,7 +561,12 @@ public class WorldChunk implements BlockAccessor, Component<ChunkStore> {
       } else {
          int index = ChunkUtil.indexBlockInColumn(x, y, z);
          Ref<ChunkStore> reference = this.blockComponentChunk.getEntityReference(index);
-         return reference == null ? null : reference.getStore().copyEntity(reference);
+         if (reference != null) {
+            return reference.getStore().copyEntity(reference);
+         } else {
+            Holder<ChunkStore> holder = this.blockComponentChunk.getEntityHolder(index);
+            return holder != null ? holder.clone() : null;
+         }
       }
    }
 

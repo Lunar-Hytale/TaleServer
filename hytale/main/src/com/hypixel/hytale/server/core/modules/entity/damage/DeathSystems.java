@@ -82,10 +82,13 @@ public class DeathSystems {
       @Nonnull ComponentAccessor<EntityStore> componentAccessor
    ) {
       if (modelComponent != null) {
-         Model model = modelComponent.getModel();
-         String[] animationIds = Entity.DefaultAnimations.getDeathAnimationIds(movementStatesComponent.getMovementStates(), deathComponent.getDeathCause());
-         String selectedAnimationId = model.getFirstBoundAnimationId(animationIds);
-         AnimationUtils.playAnimation(ref, AnimationSlot.Status, selectedAnimationId, true, componentAccessor);
+         DamageCause deathCause = deathComponent.getDeathCause();
+         if (deathCause != null) {
+            Model model = modelComponent.getModel();
+            String[] animationIds = Entity.DefaultAnimations.getDeathAnimationIds(movementStatesComponent.getMovementStates(), deathCause);
+            String selectedAnimationId = model.getFirstBoundAnimationId(animationIds);
+            AnimationUtils.playAnimation(ref, AnimationSlot.Status, selectedAnimationId, true, componentAccessor);
+         }
       }
    }
 
@@ -231,7 +234,9 @@ public class DeathSystems {
 
    public static class DropPlayerDeathItems extends DeathSystems.OnDeathSystem {
       @Nonnull
-      private static final Query<EntityStore> QUERY = Archetype.of(Player.getComponentType(), TransformComponent.getComponentType());
+      private static final Query<EntityStore> QUERY = Archetype.of(
+         Player.getComponentType(), TransformComponent.getComponentType(), HeadRotation.getComponentType()
+      );
 
       @Nonnull
       @Override
@@ -432,7 +437,7 @@ public class DeathSystems {
       @Nonnull
       @Override
       public Query<EntityStore> getQuery() {
-         return Player.getComponentType();
+         return Query.and(Player.getComponentType(), TransformComponent.getComponentType());
       }
 
       public void onComponentAdded(
@@ -465,7 +470,7 @@ public class DeathSystems {
       @Nonnull
       @Override
       public Query<EntityStore> getQuery() {
-         return Player.getComponentType();
+         return Query.and(Player.getComponentType(), PlayerRef.getComponentType());
       }
 
       @Nonnull

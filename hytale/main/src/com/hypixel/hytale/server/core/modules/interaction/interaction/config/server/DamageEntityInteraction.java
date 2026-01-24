@@ -64,7 +64,6 @@ import java.util.Map.Entry;
 import java.util.stream.IntStream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
 
 public class DamageEntityInteraction extends Interaction {
    @Nonnull
@@ -174,7 +173,7 @@ public class DamageEntityInteraction extends Interaction {
 
    @Override
    protected void tick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       Ref<EntityStore> targetRef = context.getTargetEntity();
       if (targetRef != null && targetRef.isValid() && context.getEntity().isValid()) {
@@ -200,7 +199,7 @@ public class DamageEntityInteraction extends Interaction {
 
    @Override
    protected void simulateTick0(
-      boolean firstRun, float time, @NonNullDecl InteractionType type, @Nonnull InteractionContext context, @NonNullDecl CooldownHandler cooldownHandler
+      boolean firstRun, float time, @Nonnull InteractionType type, @Nonnull InteractionContext context, @Nonnull CooldownHandler cooldownHandler
    ) {
       this.tick0(firstRun, time, type, context, cooldownHandler);
    }

@@ -9,7 +9,7 @@ public enum OrderPriority {
 
    private final int value;
 
-   private OrderPriority(int value) {
+   private OrderPriority(final int value) {
       this.value = value;
    }
 

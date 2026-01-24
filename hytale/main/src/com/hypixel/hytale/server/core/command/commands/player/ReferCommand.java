@@ -45,10 +45,8 @@ public class ReferCommand extends AbstractTargetPlayerCommand {
       }
 
       if (port > 0 && port <= 65535) {
-         byte[] testData = "Test referral".getBytes();
-
          try {
-            playerRef.referToServer(host, port, testData);
+            playerRef.referToServer(host, port);
             if (isTargetingOther) {
                context.sendMessage(
                   Message.translation("server.commands.refer.success.other").param("username", playerRef.getUsername()).param("host", host).param("port", port)
@@ -56,8 +54,8 @@ public class ReferCommand extends AbstractTargetPlayerCommand {
             } else {
                context.sendMessage(Message.translation("server.commands.refer.success.self").param("host", host).param("port", port));
             }
-         } catch (Exception var12) {
-            context.sendMessage(Message.translation("server.commands.refer.failed").param("error", var12.getMessage()));
+         } catch (Exception var11) {
+            context.sendMessage(Message.translation("server.commands.refer.failed").param("error", var11.getMessage()));
          }
       } else {
          context.sendMessage(Message.translation("server.commands.refer.invalidPort"));

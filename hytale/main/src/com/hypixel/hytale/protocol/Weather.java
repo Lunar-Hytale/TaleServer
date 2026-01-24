@@ -164,15 +164,15 @@ public class Weather {
    public static Weather deserialize(@Nonnull ByteBuf buf, int offset) {
       Weather obj = new Weather();
       byte[] nullBits = PacketIO.readBytes(buf, offset, 4);
-      if ((nullBits[3] & 1) != 0) {
+      if ((nullBits[0] & 1) != 0) {
          obj.fog = NearFar.deserialize(buf, offset + 4);
       }
 
-      if ((nullBits[3] & 2) != 0) {
+      if ((nullBits[0] & 2) != 0) {
          obj.fogOptions = FogOptions.deserialize(buf, offset + 12);
       }
 
-      if ((nullBits[0] & 1) != 0) {
+      if ((nullBits[0] & 4) != 0) {
          int varPos0 = offset + 126 + buf.getIntLE(offset + 30);
          int idLen = VarInt.peek(buf, varPos0);
          if (idLen < 0) {
@@ -186,7 +186,7 @@ public class Weather {
          obj.id = PacketIO.readVarString(buf, varPos0, PacketIO.UTF8);
       }
 
-      if ((nullBits[0] & 2) != 0) {
+      if ((nullBits[0] & 8) != 0) {
          int varPos1 = offset + 126 + buf.getIntLE(offset + 34);
          int tagIndexesCount = VarInt.peek(buf, varPos1);
          if (tagIndexesCount < 0) {
@@ -209,7 +209,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 4) != 0) {
+      if ((nullBits[0] & 16) != 0) {
          int varPos2 = offset + 126 + buf.getIntLE(offset + 38);
          int starsLen = VarInt.peek(buf, varPos2);
          if (starsLen < 0) {
@@ -223,7 +223,7 @@ public class Weather {
          obj.stars = PacketIO.readVarString(buf, varPos2, PacketIO.UTF8);
       }
 
-      if ((nullBits[0] & 8) != 0) {
+      if ((nullBits[0] & 32) != 0) {
          int varPos3 = offset + 126 + buf.getIntLE(offset + 42);
          int moonsCount = VarInt.peek(buf, varPos3);
          if (moonsCount < 0) {
@@ -259,7 +259,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 16) != 0) {
+      if ((nullBits[0] & 64) != 0) {
          int varPos4 = offset + 126 + buf.getIntLE(offset + 46);
          int cloudsCount = VarInt.peek(buf, varPos4);
          if (cloudsCount < 0) {
@@ -284,7 +284,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 32) != 0) {
+      if ((nullBits[0] & 128) != 0) {
          int varPos5 = offset + 126 + buf.getIntLE(offset + 50);
          int sunlightDampingMultiplierCount = VarInt.peek(buf, varPos5);
          if (sunlightDampingMultiplierCount < 0) {
@@ -310,7 +310,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 64) != 0) {
+      if ((nullBits[1] & 1) != 0) {
          int varPos6 = offset + 126 + buf.getIntLE(offset + 54);
          int sunlightColorsCount = VarInt.peek(buf, varPos6);
          if (sunlightColorsCount < 0) {
@@ -336,7 +336,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 128) != 0) {
+      if ((nullBits[1] & 2) != 0) {
          int varPos7 = offset + 126 + buf.getIntLE(offset + 58);
          int skyTopColorsCount = VarInt.peek(buf, varPos7);
          if (skyTopColorsCount < 0) {
@@ -362,7 +362,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 1) != 0) {
+      if ((nullBits[1] & 4) != 0) {
          int varPos8 = offset + 126 + buf.getIntLE(offset + 62);
          int skyBottomColorsCount = VarInt.peek(buf, varPos8);
          if (skyBottomColorsCount < 0) {
@@ -388,7 +388,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 2) != 0) {
+      if ((nullBits[1] & 8) != 0) {
          int varPos9 = offset + 126 + buf.getIntLE(offset + 66);
          int skySunsetColorsCount = VarInt.peek(buf, varPos9);
          if (skySunsetColorsCount < 0) {
@@ -414,7 +414,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 4) != 0) {
+      if ((nullBits[1] & 16) != 0) {
          int varPos10 = offset + 126 + buf.getIntLE(offset + 70);
          int sunColorsCount = VarInt.peek(buf, varPos10);
          if (sunColorsCount < 0) {
@@ -440,7 +440,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 8) != 0) {
+      if ((nullBits[1] & 32) != 0) {
          int varPos11 = offset + 126 + buf.getIntLE(offset + 74);
          int sunScalesCount = VarInt.peek(buf, varPos11);
          if (sunScalesCount < 0) {
@@ -466,7 +466,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 16) != 0) {
+      if ((nullBits[1] & 64) != 0) {
          int varPos12 = offset + 126 + buf.getIntLE(offset + 78);
          int sunGlowColorsCount = VarInt.peek(buf, varPos12);
          if (sunGlowColorsCount < 0) {
@@ -492,7 +492,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 32) != 0) {
+      if ((nullBits[1] & 128) != 0) {
          int varPos13 = offset + 126 + buf.getIntLE(offset + 82);
          int moonColorsCount = VarInt.peek(buf, varPos13);
          if (moonColorsCount < 0) {
@@ -518,7 +518,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 64) != 0) {
+      if ((nullBits[2] & 1) != 0) {
          int varPos14 = offset + 126 + buf.getIntLE(offset + 86);
          int moonScalesCount = VarInt.peek(buf, varPos14);
          if (moonScalesCount < 0) {
@@ -544,7 +544,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 128) != 0) {
+      if ((nullBits[2] & 2) != 0) {
          int varPos15 = offset + 126 + buf.getIntLE(offset + 90);
          int moonGlowColorsCount = VarInt.peek(buf, varPos15);
          if (moonGlowColorsCount < 0) {
@@ -570,7 +570,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 1) != 0) {
+      if ((nullBits[2] & 4) != 0) {
          int varPos16 = offset + 126 + buf.getIntLE(offset + 94);
          int fogColorsCount = VarInt.peek(buf, varPos16);
          if (fogColorsCount < 0) {
@@ -596,7 +596,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 2) != 0) {
+      if ((nullBits[2] & 8) != 0) {
          int varPos17 = offset + 126 + buf.getIntLE(offset + 98);
          int fogHeightFalloffsCount = VarInt.peek(buf, varPos17);
          if (fogHeightFalloffsCount < 0) {
@@ -622,7 +622,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 4) != 0) {
+      if ((nullBits[2] & 16) != 0) {
          int varPos18 = offset + 126 + buf.getIntLE(offset + 102);
          int fogDensitiesCount = VarInt.peek(buf, varPos18);
          if (fogDensitiesCount < 0) {
@@ -648,7 +648,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 8) != 0) {
+      if ((nullBits[2] & 32) != 0) {
          int varPos19 = offset + 126 + buf.getIntLE(offset + 106);
          int screenEffectLen = VarInt.peek(buf, varPos19);
          if (screenEffectLen < 0) {
@@ -662,7 +662,7 @@ public class Weather {
          obj.screenEffect = PacketIO.readVarString(buf, varPos19, PacketIO.UTF8);
       }
 
-      if ((nullBits[2] & 16) != 0) {
+      if ((nullBits[2] & 64) != 0) {
          int varPos20 = offset + 126 + buf.getIntLE(offset + 110);
          int screenEffectColorsCount = VarInt.peek(buf, varPos20);
          if (screenEffectColorsCount < 0) {
@@ -688,7 +688,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 32) != 0) {
+      if ((nullBits[2] & 128) != 0) {
          int varPos21 = offset + 126 + buf.getIntLE(offset + 114);
          int colorFiltersCount = VarInt.peek(buf, varPos21);
          if (colorFiltersCount < 0) {
@@ -714,7 +714,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 64) != 0) {
+      if ((nullBits[3] & 1) != 0) {
          int varPos22 = offset + 126 + buf.getIntLE(offset + 118);
          int waterTintsCount = VarInt.peek(buf, varPos22);
          if (waterTintsCount < 0) {
@@ -740,7 +740,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 128) != 0) {
+      if ((nullBits[3] & 2) != 0) {
          int varPos23 = offset + 126 + buf.getIntLE(offset + 122);
          obj.particle = WeatherParticle.deserialize(buf, varPos23);
       }
@@ -751,7 +751,7 @@ public class Weather {
    public static int computeBytesConsumed(@Nonnull ByteBuf buf, int offset) {
       byte[] nullBits = PacketIO.readBytes(buf, offset, 4);
       int maxEnd = 126;
-      if ((nullBits[0] & 1) != 0) {
+      if ((nullBits[0] & 4) != 0) {
          int fieldOffset0 = buf.getIntLE(offset + 30);
          int pos0 = offset + 126 + fieldOffset0;
          int sl = VarInt.peek(buf, pos0);
@@ -761,7 +761,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 2) != 0) {
+      if ((nullBits[0] & 8) != 0) {
          int fieldOffset1 = buf.getIntLE(offset + 34);
          int pos1 = offset + 126 + fieldOffset1;
          int arrLen = VarInt.peek(buf, pos1);
@@ -771,7 +771,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 4) != 0) {
+      if ((nullBits[0] & 16) != 0) {
          int fieldOffset2 = buf.getIntLE(offset + 38);
          int pos2 = offset + 126 + fieldOffset2;
          int sl = VarInt.peek(buf, pos2);
@@ -781,7 +781,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 8) != 0) {
+      if ((nullBits[0] & 32) != 0) {
          int fieldOffset3 = buf.getIntLE(offset + 42);
          int pos3 = offset + 126 + fieldOffset3;
          int dictLen = VarInt.peek(buf, pos3);
@@ -798,7 +798,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 16) != 0) {
+      if ((nullBits[0] & 64) != 0) {
          int fieldOffset4 = buf.getIntLE(offset + 46);
          int pos4 = offset + 126 + fieldOffset4;
          int arrLen = VarInt.peek(buf, pos4);
@@ -813,7 +813,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 32) != 0) {
+      if ((nullBits[0] & 128) != 0) {
          int fieldOffset5 = buf.getIntLE(offset + 50);
          int pos5 = offset + 126 + fieldOffset5;
          int dictLen = VarInt.peek(buf, pos5);
@@ -829,7 +829,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 64) != 0) {
+      if ((nullBits[1] & 1) != 0) {
          int fieldOffset6 = buf.getIntLE(offset + 54);
          int pos6 = offset + 126 + fieldOffset6;
          int dictLen = VarInt.peek(buf, pos6);
@@ -845,7 +845,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[0] & 128) != 0) {
+      if ((nullBits[1] & 2) != 0) {
          int fieldOffset7 = buf.getIntLE(offset + 58);
          int pos7 = offset + 126 + fieldOffset7;
          int dictLen = VarInt.peek(buf, pos7);
@@ -861,7 +861,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 1) != 0) {
+      if ((nullBits[1] & 4) != 0) {
          int fieldOffset8 = buf.getIntLE(offset + 62);
          int pos8 = offset + 126 + fieldOffset8;
          int dictLen = VarInt.peek(buf, pos8);
@@ -877,7 +877,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 2) != 0) {
+      if ((nullBits[1] & 8) != 0) {
          int fieldOffset9 = buf.getIntLE(offset + 66);
          int pos9 = offset + 126 + fieldOffset9;
          int dictLen = VarInt.peek(buf, pos9);
@@ -893,7 +893,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 4) != 0) {
+      if ((nullBits[1] & 16) != 0) {
          int fieldOffset10 = buf.getIntLE(offset + 70);
          int pos10 = offset + 126 + fieldOffset10;
          int dictLen = VarInt.peek(buf, pos10);
@@ -909,7 +909,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 8) != 0) {
+      if ((nullBits[1] & 32) != 0) {
          int fieldOffset11 = buf.getIntLE(offset + 74);
          int pos11 = offset + 126 + fieldOffset11;
          int dictLen = VarInt.peek(buf, pos11);
@@ -925,7 +925,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 16) != 0) {
+      if ((nullBits[1] & 64) != 0) {
          int fieldOffset12 = buf.getIntLE(offset + 78);
          int pos12 = offset + 126 + fieldOffset12;
          int dictLen = VarInt.peek(buf, pos12);
@@ -941,7 +941,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 32) != 0) {
+      if ((nullBits[1] & 128) != 0) {
          int fieldOffset13 = buf.getIntLE(offset + 82);
          int pos13 = offset + 126 + fieldOffset13;
          int dictLen = VarInt.peek(buf, pos13);
@@ -957,7 +957,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 64) != 0) {
+      if ((nullBits[2] & 1) != 0) {
          int fieldOffset14 = buf.getIntLE(offset + 86);
          int pos14 = offset + 126 + fieldOffset14;
          int dictLen = VarInt.peek(buf, pos14);
@@ -973,7 +973,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[1] & 128) != 0) {
+      if ((nullBits[2] & 2) != 0) {
          int fieldOffset15 = buf.getIntLE(offset + 90);
          int pos15 = offset + 126 + fieldOffset15;
          int dictLen = VarInt.peek(buf, pos15);
@@ -989,7 +989,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 1) != 0) {
+      if ((nullBits[2] & 4) != 0) {
          int fieldOffset16 = buf.getIntLE(offset + 94);
          int pos16 = offset + 126 + fieldOffset16;
          int dictLen = VarInt.peek(buf, pos16);
@@ -1005,7 +1005,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 2) != 0) {
+      if ((nullBits[2] & 8) != 0) {
          int fieldOffset17 = buf.getIntLE(offset + 98);
          int pos17 = offset + 126 + fieldOffset17;
          int dictLen = VarInt.peek(buf, pos17);
@@ -1021,7 +1021,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 4) != 0) {
+      if ((nullBits[2] & 16) != 0) {
          int fieldOffset18 = buf.getIntLE(offset + 102);
          int pos18 = offset + 126 + fieldOffset18;
          int dictLen = VarInt.peek(buf, pos18);
@@ -1037,7 +1037,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 8) != 0) {
+      if ((nullBits[2] & 32) != 0) {
          int fieldOffset19 = buf.getIntLE(offset + 106);
          int pos19 = offset + 126 + fieldOffset19;
          int sl = VarInt.peek(buf, pos19);
@@ -1047,7 +1047,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 16) != 0) {
+      if ((nullBits[2] & 64) != 0) {
          int fieldOffset20 = buf.getIntLE(offset + 110);
          int pos20 = offset + 126 + fieldOffset20;
          int dictLen = VarInt.peek(buf, pos20);
@@ -1063,7 +1063,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 32) != 0) {
+      if ((nullBits[2] & 128) != 0) {
          int fieldOffset21 = buf.getIntLE(offset + 114);
          int pos21 = offset + 126 + fieldOffset21;
          int dictLen = VarInt.peek(buf, pos21);
@@ -1079,7 +1079,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 64) != 0) {
+      if ((nullBits[3] & 1) != 0) {
          int fieldOffset22 = buf.getIntLE(offset + 118);
          int pos22 = offset + 126 + fieldOffset22;
          int dictLen = VarInt.peek(buf, pos22);
@@ -1095,7 +1095,7 @@ public class Weather {
          }
       }
 
-      if ((nullBits[2] & 128) != 0) {
+      if ((nullBits[3] & 2) != 0) {
          int fieldOffset23 = buf.getIntLE(offset + 122);
          int pos23 = offset + 126 + fieldOffset23;
          pos23 += WeatherParticle.computeBytesConsumed(buf, pos23);
@@ -1110,107 +1110,107 @@ public class Weather {
    public void serialize(@Nonnull ByteBuf buf) {
       int startPos = buf.writerIndex();
       byte[] nullBits = new byte[4];
-      if (this.id != null) {
+      if (this.fog != null) {
          nullBits[0] = (byte)(nullBits[0] | 1);
       }
 
-      if (this.tagIndexes != null) {
+      if (this.fogOptions != null) {
          nullBits[0] = (byte)(nullBits[0] | 2);
       }
 
-      if (this.stars != null) {
+      if (this.id != null) {
          nullBits[0] = (byte)(nullBits[0] | 4);
       }
 
-      if (this.moons != null) {
+      if (this.tagIndexes != null) {
          nullBits[0] = (byte)(nullBits[0] | 8);
       }
 
-      if (this.clouds != null) {
+      if (this.stars != null) {
          nullBits[0] = (byte)(nullBits[0] | 16);
       }
 
-      if (this.sunlightDampingMultiplier != null) {
+      if (this.moons != null) {
          nullBits[0] = (byte)(nullBits[0] | 32);
       }
 
-      if (this.sunlightColors != null) {
+      if (this.clouds != null) {
          nullBits[0] = (byte)(nullBits[0] | 64);
       }
 
-      if (this.skyTopColors != null) {
+      if (this.sunlightDampingMultiplier != null) {
          nullBits[0] = (byte)(nullBits[0] | 128);
       }
 
-      if (this.skyBottomColors != null) {
+      if (this.sunlightColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 1);
       }
 
-      if (this.skySunsetColors != null) {
+      if (this.skyTopColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 2);
       }
 
-      if (this.sunColors != null) {
+      if (this.skyBottomColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 4);
       }
 
-      if (this.sunScales != null) {
+      if (this.skySunsetColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 8);
       }
 
-      if (this.sunGlowColors != null) {
+      if (this.sunColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 16);
       }
 
-      if (this.moonColors != null) {
+      if (this.sunScales != null) {
          nullBits[1] = (byte)(nullBits[1] | 32);
       }
 
-      if (this.moonScales != null) {
+      if (this.sunGlowColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 64);
       }
 
-      if (this.moonGlowColors != null) {
+      if (this.moonColors != null) {
          nullBits[1] = (byte)(nullBits[1] | 128);
       }
 
-      if (this.fogColors != null) {
+      if (this.moonScales != null) {
          nullBits[2] = (byte)(nullBits[2] | 1);
       }
 
-      if (this.fogHeightFalloffs != null) {
+      if (this.moonGlowColors != null) {
          nullBits[2] = (byte)(nullBits[2] | 2);
       }
 
-      if (this.fogDensities != null) {
+      if (this.fogColors != null) {
          nullBits[2] = (byte)(nullBits[2] | 4);
       }
 
-      if (this.screenEffect != null) {
+      if (this.fogHeightFalloffs != null) {
          nullBits[2] = (byte)(nullBits[2] | 8);
       }
 
-      if (this.screenEffectColors != null) {
+      if (this.fogDensities != null) {
          nullBits[2] = (byte)(nullBits[2] | 16);
       }
 
-      if (this.colorFilters != null) {
+      if (this.screenEffect != null) {
          nullBits[2] = (byte)(nullBits[2] | 32);
       }
 
-      if (this.waterTints != null) {
+      if (this.screenEffectColors != null) {
          nullBits[2] = (byte)(nullBits[2] | 64);
       }
 
-      if (this.particle != null) {
+      if (this.colorFilters != null) {
          nullBits[2] = (byte)(nullBits[2] | 128);
       }
 
-      if (this.fog != null) {
+      if (this.waterTints != null) {
          nullBits[3] = (byte)(nullBits[3] | 1);
       }
 
-      if (this.fogOptions != null) {
+      if (this.particle != null) {
          nullBits[3] = (byte)(nullBits[3] | 2);
       }
 
@@ -1741,7 +1741,7 @@ public class Weather {
          return ValidationResult.error("Buffer too small: expected at least 126 bytes");
       } else {
          byte[] nullBits = PacketIO.readBytes(buffer, offset, 4);
-         if ((nullBits[0] & 1) != 0) {
+         if ((nullBits[0] & 4) != 0) {
             int idOffset = buffer.getIntLE(offset + 30);
             if (idOffset < 0) {
                return ValidationResult.error("Invalid offset for Id");
@@ -1768,7 +1768,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 2) != 0) {
+         if ((nullBits[0] & 8) != 0) {
             int tagIndexesOffset = buffer.getIntLE(offset + 34);
             if (tagIndexesOffset < 0) {
                return ValidationResult.error("Invalid offset for TagIndexes");
@@ -1795,7 +1795,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 4) != 0) {
+         if ((nullBits[0] & 16) != 0) {
             int starsOffset = buffer.getIntLE(offset + 38);
             if (starsOffset < 0) {
                return ValidationResult.error("Invalid offset for Stars");
@@ -1822,7 +1822,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 8) != 0) {
+         if ((nullBits[0] & 32) != 0) {
             int moonsOffset = buffer.getIntLE(offset + 42);
             if (moonsOffset < 0) {
                return ValidationResult.error("Invalid offset for Moons");
@@ -1867,7 +1867,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 16) != 0) {
+         if ((nullBits[0] & 64) != 0) {
             int cloudsOffset = buffer.getIntLE(offset + 46);
             if (cloudsOffset < 0) {
                return ValidationResult.error("Invalid offset for Clouds");
@@ -1899,7 +1899,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 32) != 0) {
+         if ((nullBits[0] & 128) != 0) {
             int sunlightDampingMultiplierOffset = buffer.getIntLE(offset + 50);
             if (sunlightDampingMultiplierOffset < 0) {
                return ValidationResult.error("Invalid offset for SunlightDampingMultiplier");
@@ -1934,7 +1934,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 64) != 0) {
+         if ((nullBits[1] & 1) != 0) {
             int sunlightColorsOffset = buffer.getIntLE(offset + 54);
             if (sunlightColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SunlightColors");
@@ -1966,7 +1966,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[0] & 128) != 0) {
+         if ((nullBits[1] & 2) != 0) {
             int skyTopColorsOffset = buffer.getIntLE(offset + 58);
             if (skyTopColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SkyTopColors");
@@ -1998,7 +1998,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 1) != 0) {
+         if ((nullBits[1] & 4) != 0) {
             int skyBottomColorsOffset = buffer.getIntLE(offset + 62);
             if (skyBottomColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SkyBottomColors");
@@ -2030,7 +2030,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 2) != 0) {
+         if ((nullBits[1] & 8) != 0) {
             int skySunsetColorsOffset = buffer.getIntLE(offset + 66);
             if (skySunsetColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SkySunsetColors");
@@ -2062,7 +2062,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 4) != 0) {
+         if ((nullBits[1] & 16) != 0) {
             int sunColorsOffset = buffer.getIntLE(offset + 70);
             if (sunColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SunColors");
@@ -2094,7 +2094,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 8) != 0) {
+         if ((nullBits[1] & 32) != 0) {
             int sunScalesOffset = buffer.getIntLE(offset + 74);
             if (sunScalesOffset < 0) {
                return ValidationResult.error("Invalid offset for SunScales");
@@ -2129,7 +2129,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 16) != 0) {
+         if ((nullBits[1] & 64) != 0) {
             int sunGlowColorsOffset = buffer.getIntLE(offset + 78);
             if (sunGlowColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for SunGlowColors");
@@ -2161,7 +2161,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 32) != 0) {
+         if ((nullBits[1] & 128) != 0) {
             int moonColorsOffset = buffer.getIntLE(offset + 82);
             if (moonColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for MoonColors");
@@ -2193,7 +2193,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 64) != 0) {
+         if ((nullBits[2] & 1) != 0) {
             int moonScalesOffset = buffer.getIntLE(offset + 86);
             if (moonScalesOffset < 0) {
                return ValidationResult.error("Invalid offset for MoonScales");
@@ -2228,7 +2228,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[1] & 128) != 0) {
+         if ((nullBits[2] & 2) != 0) {
             int moonGlowColorsOffset = buffer.getIntLE(offset + 90);
             if (moonGlowColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for MoonGlowColors");
@@ -2260,7 +2260,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 1) != 0) {
+         if ((nullBits[2] & 4) != 0) {
             int fogColorsOffset = buffer.getIntLE(offset + 94);
             if (fogColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for FogColors");
@@ -2292,7 +2292,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 2) != 0) {
+         if ((nullBits[2] & 8) != 0) {
             int fogHeightFalloffsOffset = buffer.getIntLE(offset + 98);
             if (fogHeightFalloffsOffset < 0) {
                return ValidationResult.error("Invalid offset for FogHeightFalloffs");
@@ -2327,7 +2327,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 4) != 0) {
+         if ((nullBits[2] & 16) != 0) {
             int fogDensitiesOffset = buffer.getIntLE(offset + 102);
             if (fogDensitiesOffset < 0) {
                return ValidationResult.error("Invalid offset for FogDensities");
@@ -2362,7 +2362,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 8) != 0) {
+         if ((nullBits[2] & 32) != 0) {
             int screenEffectOffset = buffer.getIntLE(offset + 106);
             if (screenEffectOffset < 0) {
                return ValidationResult.error("Invalid offset for ScreenEffect");
@@ -2389,7 +2389,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 16) != 0) {
+         if ((nullBits[2] & 64) != 0) {
             int screenEffectColorsOffset = buffer.getIntLE(offset + 110);
             if (screenEffectColorsOffset < 0) {
                return ValidationResult.error("Invalid offset for ScreenEffectColors");
@@ -2421,7 +2421,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 32) != 0) {
+         if ((nullBits[2] & 128) != 0) {
             int colorFiltersOffset = buffer.getIntLE(offset + 114);
             if (colorFiltersOffset < 0) {
                return ValidationResult.error("Invalid offset for ColorFilters");
@@ -2453,7 +2453,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 64) != 0) {
+         if ((nullBits[3] & 1) != 0) {
             int waterTintsOffset = buffer.getIntLE(offset + 118);
             if (waterTintsOffset < 0) {
                return ValidationResult.error("Invalid offset for WaterTints");
@@ -2485,7 +2485,7 @@ public class Weather {
             }
          }
 
-         if ((nullBits[2] & 128) != 0) {
+         if ((nullBits[3] & 2) != 0) {
             int particleOffset = buffer.getIntLE(offset + 122);
             if (particleOffset < 0) {
                return ValidationResult.error("Invalid offset for Particle");

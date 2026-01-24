@@ -6,6 +6,7 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.util.MathUtil;
+import com.hypixel.hytale.math.vector.Transform;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.math.vector.Vector3f;
 import com.hypixel.hytale.math.vector.Vector3i;
@@ -68,6 +69,7 @@ import com.hypixel.hytale.server.core.entity.movement.MovementStatesComponent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
 import com.hypixel.hytale.server.core.inventory.Inventory;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.io.PacketHandler;
 import com.hypixel.hytale.server.core.io.ProtocolVersion;
 import com.hypixel.hytale.server.core.io.ServerManager;
 import com.hypixel.hytale.server.core.io.handlers.GenericPacketHandler;
@@ -82,6 +84,7 @@ import com.hypixel.hytale.server.core.modules.entity.player.PlayerSettings;
 import com.hypixel.hytale.server.core.modules.entity.teleport.PendingTeleport;
 import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
 import com.hypixel.hytale.server.core.modules.entity.tracker.EntityTrackerSystems;
+import com.hypixel.hytale.server.core.modules.i18n.I18nModule;
 import com.hypixel.hytale.server.core.modules.interaction.BlockPlaceUtils;
 import com.hypixel.hytale.server.core.modules.interaction.InteractionModule;
 import com.hypixel.hytale.server.core.modules.singleplayer.SingleplayerModule;
@@ -151,6 +154,12 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
          + "), "
          + (this.playerRef != null ? this.playerRef.getUuid() + ", " + this.playerRef.getUsername() : "null player")
          + "}";
+   }
+
+   @Override
+   protected void registered0(PacketHandler oldHandler) {
+      HytaleServerConfig.TimeoutProfile timeouts = HytaleServer.get().getConfig().getConnectionTimeouts();
+      this.enterStage("play", timeouts.getPlay());
    }
 
    protected void registerHandlers() {
@@ -424,6 +433,7 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
       Ref<EntityStore> ref = this.playerRef.getReference();
       if (ref != null && ref.isValid()) {
          this.playerRef.setLanguage(packet.language);
+         I18nModule.get().sendTranslations(this, packet.language);
       }
    }
 
@@ -441,7 +451,7 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
 
                assert playerComponent != null;
 
-               UpdateWindow updateWindowPacket = playerComponent.getWindowManager().clientOpenWindow(supplier.get());
+               UpdateWindow updateWindowPacket = playerComponent.getWindowManager().clientOpenWindow(ref, supplier.get(), store);
                if (updateWindowPacket != null) {
                   this.writeNoCache(updateWindowPacket);
                }
@@ -462,8 +472,8 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
 
             Window window = playerComponent.getWindowManager().getWindow(packet.id);
             if (window != null) {
-               if (window instanceof ValidatedWindow && !((ValidatedWindow)window).validate()) {
-                  window.close();
+               if (window instanceof ValidatedWindow validatedWindow && !validatedWindow.validate(ref, store)) {
+                  window.close(ref, store);
                } else {
                   window.handleAction(this.playerRef.getReference(), store, packet.action);
                }
@@ -490,9 +500,14 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
                      packet.usableItemsItemsPreferredPickupLocation,
                      packet.solidBlockItemsPreferredPickupLocation,
                      packet.miscItemsPreferredPickupLocation,
-                     new PlayerCreativeSettings(packet.allowNPCDetection, packet.respondToHit)
+                     new PlayerCreativeSettings(packet.allowNPCDetection, packet.respondToHit),
+                     packet.hideHelmet,
+                     packet.hideCuirass,
+                     packet.hideGauntlets,
+                     packet.hidePants
                   )
                );
+               store.getComponent(ref, Player.getComponentType()).invalidateEquipmentNetwork();
             }
          );
       }
@@ -596,7 +611,7 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
 
             assert playerComponent != null;
 
-            playerComponent.getWindowManager().closeWindow(packet.id);
+            playerComponent.getWindowManager().closeWindow(ref, packet.id, store);
          });
       }
    }
@@ -719,27 +734,23 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
       if (ref != null && ref.isValid()) {
          Store<EntityStore> store = ref.getStore();
          World world = store.getExternalData().getWorld();
-         world.execute(
-            () -> {
-               Player playerComponent = store.getComponent(ref, Player.getComponentType());
+         world.execute(() -> {
+            Player playerComponent = store.getComponent(ref, Player.getComponentType());
 
-               assert playerComponent != null;
+            assert playerComponent != null;
 
-               WorldMapTracker worldMapTracker = playerComponent.getWorldMapTracker();
-               if (!worldMapTracker.isAllowTeleportToMarkers()) {
-                  this.disconnect("You are not allowed to use TeleportToWorldMapMarker!");
-               } else {
-                  MapMarker marker = worldMapTracker.getSentMarkers().get(packet.id);
-                  if (marker != null) {
-                     world.getEntityStore()
-                        .getStore()
-                        .addComponent(
-                           this.playerRef.getReference(), Teleport.getComponentType(), new Teleport(null, PositionUtil.toTransform(marker.transform))
-                        );
-                  }
+            WorldMapTracker worldMapTracker = playerComponent.getWorldMapTracker();
+            if (!worldMapTracker.isAllowTeleportToMarkers()) {
+               this.disconnect("You are not allowed to use TeleportToWorldMapMarker!");
+            } else {
+               MapMarker marker = worldMapTracker.getSentMarkers().get(packet.id);
+               if (marker != null) {
+                  Transform transform = PositionUtil.toTransform(marker.transform);
+                  Teleport teleportComponent = Teleport.createForPlayer(transform);
+                  world.getEntityStore().getStore().addComponent(this.playerRef.getReference(), Teleport.getComponentType(), teleportComponent);
                }
             }
-         );
+         });
       }
    }
 
@@ -748,31 +759,26 @@ public class GamePacketHandler extends GenericPacketHandler implements IPacketHa
       if (ref != null && ref.isValid()) {
          Store<EntityStore> store = ref.getStore();
          World world = store.getExternalData().getWorld();
-         world.execute(
-            () -> {
-               Player playerComponent = store.getComponent(ref, Player.getComponentType());
+         world.execute(() -> {
+            Player playerComponent = store.getComponent(ref, Player.getComponentType());
 
-               assert playerComponent != null;
+            assert playerComponent != null;
 
-               WorldMapTracker worldMapTracker = playerComponent.getWorldMapTracker();
-               if (!worldMapTracker.isAllowTeleportToCoordinates()) {
-                  this.disconnect("You are not allowed to use TeleportToWorldMapMarker!");
-               } else {
-                  world.getChunkStore()
-                     .getChunkReferenceAsync(ChunkUtil.indexChunkFromBlock(packet.x, packet.y))
-                     .thenAcceptAsync(
-                        chunkRef -> {
-                           BlockChunk blockChunk = world.getChunkStore().getStore().getComponent((Ref<ChunkStore>)chunkRef, BlockChunk.getComponentType());
-                           Vector3d position = new Vector3d(packet.x, blockChunk.getHeight(packet.x, packet.y) + 2, packet.y);
-                           world.getEntityStore()
-                              .getStore()
-                              .addComponent(this.playerRef.getReference(), Teleport.getComponentType(), new Teleport(null, position, Vector3f.NaN));
-                        },
-                        world
-                     );
-               }
+            WorldMapTracker worldMapTracker = playerComponent.getWorldMapTracker();
+            if (!worldMapTracker.isAllowTeleportToCoordinates()) {
+               this.disconnect("You are not allowed to use TeleportToWorldMapMarker!");
+            } else {
+               world.getChunkStore().getChunkReferenceAsync(ChunkUtil.indexChunkFromBlock(packet.x, packet.y)).thenAcceptAsync(chunkRef -> {
+                  BlockChunk blockChunkComponent = world.getChunkStore().getStore().getComponent((Ref<ChunkStore>)chunkRef, BlockChunk.getComponentType());
+
+                  assert blockChunkComponent != null;
+
+                  Vector3d position = new Vector3d(packet.x, blockChunkComponent.getHeight(packet.x, packet.y) + 2, packet.y);
+                  Teleport teleportComponent = Teleport.createForPlayer(null, position, new Vector3f(0.0F, 0.0F, 0.0F));
+                  world.getEntityStore().getStore().addComponent(this.playerRef.getReference(), Teleport.getComponentType(), teleportComponent);
+               }, world);
             }
-         );
+         });
       }
    }
 

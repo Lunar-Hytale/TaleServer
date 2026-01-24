@@ -18,8 +18,6 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.RefChangeSystem;
 import com.hypixel.hytale.logger.HytaleLogger;
-import com.hypixel.hytale.server.core.entity.Entity;
-import com.hypixel.hytale.server.core.entity.EntityUtils;
 import com.hypixel.hytale.server.core.entity.nameplate.Nameplate;
 import com.hypixel.hytale.server.core.modules.LegacyModule;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
@@ -30,7 +28,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -111,14 +108,20 @@ public class EntityChunk implements Component<ChunkStore> {
    @Nonnull
    @Override
    public Component<ChunkStore> cloneSerializable() {
+      ComponentRegistry.Data<EntityStore> data = EntityStore.REGISTRY.getData();
       ObjectArrayList<Holder<EntityStore>> entityHoldersClone = new ObjectArrayList(this.entityHolders.size() + this.entityReferences.size());
 
       for (Holder<EntityStore> entityHolder : this.entityHolders) {
-         entityHoldersClone.add(entityHolder.clone());
+         if (entityHolder.getArchetype().hasSerializableComponents(data)) {
+            entityHoldersClone.add(entityHolder.cloneSerializable(data));
+         }
       }
 
       for (Ref<EntityStore> reference : this.entityReferences) {
-         entityHoldersClone.add(reference.getStore().copySerializableEntity(reference));
+         Store<EntityStore> store = reference.getStore();
+         if (store.getArchetype(reference).hasSerializableComponents(data)) {
+            entityHoldersClone.add(store.copySerializableEntity(reference));
+         }
       }
 
       return new EntityChunk(entityHoldersClone, new HashSet<>());
@@ -195,43 +198,6 @@ public class EntityChunk implements Component<ChunkStore> {
       boolean out = this.needsSaving;
       this.needsSaving = false;
       return out;
-   }
-
-   @Nonnull
-   @Deprecated(forRemoval = true)
-   public Iterable<Entity> getEntities() {
-      if (this.entityReferences.isEmpty()) {
-         return Collections.emptyList();
-      } else {
-         Ref<EntityStore>[] references = this.entityReferences.toArray(Ref[]::new);
-         return () -> new Iterator<Entity>() {
-            int index = references.length;
-
-            @Override
-            public boolean hasNext() {
-               if (this.index <= 0) {
-                  return false;
-               } else {
-                  for (Ref<EntityStore> reference = references[this.index - 1];
-                     !reference.isValid() || EntityUtils.getEntity(reference, reference.getStore()) == null;
-                     reference = references[this.index - 1]
-                  ) {
-                     this.index--;
-                     if (this.index <= 0) {
-                        return false;
-                     }
-                  }
-
-                  return true;
-               }
-            }
-
-            public Entity next() {
-               Ref<EntityStore> reference = references[--this.index];
-               return EntityUtils.getEntity(reference, reference.getStore());
-            }
-         };
-      }
    }
 
    public static class EntityChunkLoadingSystem extends RefChangeSystem<ChunkStore, NonTicking<ChunkStore>> {
@@ -316,6 +282,7 @@ public class EntityChunk implements Component<ChunkStore> {
                   LOGGER.at(Level.SEVERE).log("Empty archetype entity holder: %s (#%d)", holder, i);
                   holders[i] = holders[--holderCount];
                   holders[holderCount] = holder;
+                  worldChunkComponent.markNeedsSaving();
                } else if (archetype.count() == 1 && archetype.contains(Nameplate.getComponentType())) {
                   LOGGER.at(Level.SEVERE).log("Nameplate only entity holder: %s (#%d)", holder, i);
                   holders[i] = holders[--holderCount];

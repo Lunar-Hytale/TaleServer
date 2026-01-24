@@ -23,13 +23,16 @@ import com.hypixel.hytale.server.npc.asset.builder.SpawnableWithModelBuilder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.AssetArrayHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.AssetHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.BooleanHolder;
+import com.hypixel.hytale.server.npc.asset.builder.holder.DoubleHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.EnumHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.FloatHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.IntHolder;
+import com.hypixel.hytale.server.npc.asset.builder.holder.NumberArrayHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.StringArrayHolder;
 import com.hypixel.hytale.server.npc.asset.builder.holder.StringHolder;
 import com.hypixel.hytale.server.npc.asset.builder.validators.AssetValidator;
 import com.hypixel.hytale.server.npc.asset.builder.validators.DoubleRangeValidator;
+import com.hypixel.hytale.server.npc.asset.builder.validators.DoubleSequenceValidator;
 import com.hypixel.hytale.server.npc.asset.builder.validators.DoubleSingleValidator;
 import com.hypixel.hytale.server.npc.asset.builder.validators.IntRangeValidator;
 import com.hypixel.hytale.server.npc.asset.builder.validators.IntSingleValidator;
@@ -71,9 +74,9 @@ import java.util.Map;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 public class BuilderRole extends SpawnableWithModelBuilder<Role> implements SpawnEffect {
+   protected static final double[] DEFAULT_HEAD_PITCH_RANGE = new double[]{-89.0, 89.0};
    protected String[] displayNames;
    protected final AssetHolder appearance = new AssetHolder();
    protected final AssetHolder dropListId = new AssetHolder();
@@ -85,7 +88,7 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
    protected final EnumSet<RoleDebugFlags> parsedDebugFlags = EnumSet.noneOf(RoleDebugFlags.class);
    protected String debugFlags;
    protected double inertia;
-   protected double knockbackScale;
+   protected final DoubleHolder knockbackScale = new DoubleHolder();
    protected String opaqueBlockSet;
    protected boolean applyAvoidance;
    protected double entityAvoidanceStrength;
@@ -155,6 +158,8 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
    protected final StringHolder memoriesCategory = new StringHolder();
    protected final StringHolder memoriesNameOverride = new StringHolder();
    protected final StringHolder nameTranslationKey = new StringHolder();
+   protected final NumberArrayHolder headPitchAngleRange = new NumberArrayHolder();
+   protected final BooleanHolder overrideHeadPitchAngle = new BooleanHolder();
 
    @Nonnull
    @Override
@@ -275,7 +280,7 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
       this.getDouble(
          data,
          "KnockbackScale",
-         v -> this.knockbackScale = v,
+         this.knockbackScale,
          1.0,
          DoubleSingleValidator.greaterEqual0(),
          BuilderDescriptorState.Stable,
@@ -716,6 +721,25 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
          "Whether the NPC should stay in the flock until corpse removal or be removed at the moment of death",
          null
       );
+      this.getBoolean(
+         data,
+         "OverrideHeadPitchAngle",
+         this.overrideHeadPitchAngle,
+         true,
+         BuilderDescriptorState.Experimental,
+         "Whether to override the head pitch angle range",
+         null
+      );
+      this.getDoubleRange(
+         data,
+         "HeadPitchAngleRange",
+         this.headPitchAngleRange,
+         DEFAULT_HEAD_PITCH_RANGE,
+         DoubleSequenceValidator.betweenWeaklyMonotonic(-90.0, 90.0),
+         BuilderDescriptorState.Experimental,
+         "Head rotation pitch range to be used instead of model camera settings",
+         null
+      );
       this.validateAny(this.breathesInAir, this.breathesInWater);
       this.registerStateSetter(this.startState, this.defaultSubState, (m, s) -> {
          this.startStateIndex = m;
@@ -965,8 +989,8 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
       return this.inertia;
    }
 
-   public double getKnockbackScale() {
-      return this.knockbackScale;
+   public double getKnockbackScale(@Nonnull BuilderSupport support) {
+      return this.knockbackScale.get(support.getExecutionContext());
    }
 
    @Nullable
@@ -1061,6 +1085,15 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
 
    public double getEntityAvoidanceStrength() {
       return this.entityAvoidanceStrength;
+   }
+
+   public boolean isOverridingHeadPitchAngle(@Nonnull BuilderSupport support) {
+      return this.overrideHeadPitchAngle.get(support.getExecutionContext());
+   }
+
+   public float[] getHeadPitchAngleRange(@Nonnull BuilderSupport support) {
+      double[] range = this.headPitchAngleRange.get(support.getExecutionContext());
+      return new float[]{(float)(range[0] * (float) (Math.PI / 180.0)), (float)(range[1] * (float) (Math.PI / 180.0))};
    }
 
    @Nullable
@@ -1240,13 +1273,13 @@ public class BuilderRole extends SpawnableWithModelBuilder<Role> implements Spaw
    }
 
    @Override
-   public String getMemoriesNameOverride(ExecutionContext context, @NullableDecl Scope modifierScope) {
+   public String getMemoriesNameOverride(ExecutionContext context, @Nullable Scope modifierScope) {
       return this.memoriesNameOverride.get(context);
    }
 
    @Nonnull
    @Override
-   public String getNameTranslationKey(ExecutionContext context, @NullableDecl Scope modifierScope) {
+   public String getNameTranslationKey(ExecutionContext context, @Nullable Scope modifierScope) {
       return this.nameTranslationKey.get(context);
    }
 

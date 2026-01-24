@@ -40,8 +40,6 @@ import java.util.UUID;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.checkerframework.checker.nullness.compatqual.NonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 public class PrefabPathSystems {
    public static class AddOrRemove extends HolderSystem<EntityStore> {
@@ -156,7 +154,7 @@ public class PrefabPathSystems {
       }
 
       @Override
-      public void onEntityAdd(@NonNullDecl Holder<EntityStore> holder, @NonNullDecl AddReason reason, @NonNullDecl Store<EntityStore> store) {
+      public void onEntityAdd(@Nonnull Holder<EntityStore> holder, @Nonnull AddReason reason, @Nonnull Store<EntityStore> store) {
          PatrolPathMarkerEntity patrolPathMarkerComponent = holder.getComponent(PatrolPathMarkerEntity.getComponentType());
 
          assert patrolPathMarkerComponent != null;
@@ -178,7 +176,7 @@ public class PrefabPathSystems {
       }
 
       @Override
-      public void onEntityRemoved(@NonNullDecl Holder<EntityStore> holder, @NonNullDecl RemoveReason reason, @NonNullDecl Store<EntityStore> store) {
+      public void onEntityRemoved(@Nonnull Holder<EntityStore> holder, @Nonnull RemoveReason reason, @Nonnull Store<EntityStore> store) {
       }
    }
 
@@ -266,10 +264,7 @@ public class PrefabPathSystems {
       }
 
       public void onComponentAdded(
-         @NonNullDecl Ref<EntityStore> ref,
-         @NonNullDecl WorldGenId component,
-         @NonNullDecl Store<EntityStore> store,
-         @NonNullDecl CommandBuffer<EntityStore> commandBuffer
+         @Nonnull Ref<EntityStore> ref, @Nonnull WorldGenId component, @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer
       ) {
          PatrolPathMarkerEntity patrolPathMarkerComponent = commandBuffer.getComponent(ref, PatrolPathMarkerEntity.getComponentType());
 
@@ -281,11 +276,11 @@ public class PrefabPathSystems {
       }
 
       public void onComponentSet(
-         @NonNullDecl Ref<EntityStore> ref,
-         @NullableDecl WorldGenId oldComponent,
-         @NonNullDecl WorldGenId newComponent,
-         @NonNullDecl Store<EntityStore> store,
-         @NonNullDecl CommandBuffer<EntityStore> commandBuffer
+         @Nonnull Ref<EntityStore> ref,
+         @Nullable WorldGenId oldComponent,
+         @Nonnull WorldGenId newComponent,
+         @Nonnull Store<EntityStore> store,
+         @Nonnull CommandBuffer<EntityStore> commandBuffer
       ) {
          PatrolPathMarkerEntity patrolPathMarkerComponent = commandBuffer.getComponent(ref, PatrolPathMarkerEntity.getComponentType());
 
@@ -297,10 +292,7 @@ public class PrefabPathSystems {
       }
 
       public void onComponentRemoved(
-         @NonNullDecl Ref<EntityStore> ref,
-         @NonNullDecl WorldGenId component,
-         @NonNullDecl Store<EntityStore> store,
-         @NonNullDecl CommandBuffer<EntityStore> commandBuffer
+         @Nonnull Ref<EntityStore> ref, @Nonnull WorldGenId component, @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer
       ) {
          commandBuffer.putComponent(ref, DisplayNameComponent.getComponentType(), new DisplayNameComponent(MESSAGE_PREFABS_UNKNOWN));
       }

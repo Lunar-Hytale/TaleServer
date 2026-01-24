@@ -123,20 +123,27 @@ public class BlockComponentChunk implements Component<ChunkStore> {
    @Nonnull
    @Override
    public Component<ChunkStore> cloneSerializable() {
+      ComponentRegistry.Data<ChunkStore> data = ChunkStore.REGISTRY.getData();
       Int2ObjectOpenHashMap<Holder<ChunkStore>> entityHoldersClone = new Int2ObjectOpenHashMap(this.entityHolders.size() + this.entityReferences.size());
-      ObjectIterator var2 = this.entityHolders.int2ObjectEntrySet().iterator();
+      ObjectIterator var3 = this.entityHolders.int2ObjectEntrySet().iterator();
 
-      while (var2.hasNext()) {
-         Entry<Holder<ChunkStore>> entry = (Entry<Holder<ChunkStore>>)var2.next();
-         entityHoldersClone.put(entry.getIntKey(), ((Holder)entry.getValue()).clone());
+      while (var3.hasNext()) {
+         Entry<Holder<ChunkStore>> entry = (Entry<Holder<ChunkStore>>)var3.next();
+         Holder<ChunkStore> holder = (Holder<ChunkStore>)entry.getValue();
+         if (holder.getArchetype().hasSerializableComponents(data)) {
+            entityHoldersClone.put(entry.getIntKey(), holder.cloneSerializable(data));
+         }
       }
 
-      var2 = this.entityReferences.int2ObjectEntrySet().iterator();
+      var3 = this.entityReferences.int2ObjectEntrySet().iterator();
 
-      while (var2.hasNext()) {
-         Entry<Ref<ChunkStore>> entry = (Entry<Ref<ChunkStore>>)var2.next();
+      while (var3.hasNext()) {
+         Entry<Ref<ChunkStore>> entry = (Entry<Ref<ChunkStore>>)var3.next();
          Ref<ChunkStore> reference = (Ref<ChunkStore>)entry.getValue();
-         entityHoldersClone.put(entry.getIntKey(), reference.getStore().copySerializableEntity(reference));
+         Store<ChunkStore> store = reference.getStore();
+         if (store.getArchetype(reference).hasSerializableComponents(data)) {
+            entityHoldersClone.put(entry.getIntKey(), store.copySerializableEntity(reference));
+         }
       }
 
       return new BlockComponentChunk(entityHoldersClone, new Int2ObjectOpenHashMap());
@@ -354,6 +361,7 @@ public class BlockComponentChunk implements Component<ChunkStore> {
                   LOGGER.at(Level.SEVERE).log("Empty archetype entity holder: %s (#%d)", holder, i);
                   holders[i] = holders[--holderCount];
                   holders[holderCount] = holder;
+                  chunk.markNeedsSaving();
                } else {
                   int index = indexes[i];
                   int x = ChunkUtil.xFromBlockInColumn(index);

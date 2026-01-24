@@ -15,11 +15,7 @@ import javax.annotation.Nonnull;
 
 public class OpRemoveCommand extends CommandBase {
    @Nonnull
-   private static final Message MESSAGE_COMMANDS_OP_REMOVED = Message.translation("server.commands.op.removed");
-   @Nonnull
    private static final Message MESSAGE_COMMANDS_OP_REMOVED_TARGET = Message.translation("server.commands.op.removed.target");
-   @Nonnull
-   private static final Message MESSAGE_COMMANDS_OP_NOT_OP = Message.translation("server.commands.op.notOp");
    @Nonnull
    private final RequiredArg<UUID> playerArg = this.withRequiredArg("player", "server.commands.op.remove.player.desc", ArgTypes.PLAYER_UUID);
 
@@ -33,18 +29,18 @@ public class OpRemoveCommand extends CommandBase {
       UUID uuid = this.playerArg.get(context);
       PermissionsModule permissionsModule = PermissionsModule.get();
       String opGroup = "OP";
-      String rawInput = context.getInput(this.playerArg)[0];
-      Message displayMessage = Message.raw(rawInput).bold(true);
+      PlayerRef playerRef = Universe.get().getPlayer(uuid);
+      String displayName = playerRef != null ? playerRef.getUsername() : uuid.toString();
+      Message displayMessage = Message.raw(displayName).bold(true);
       Set<String> groups = permissionsModule.getGroupsForUser(uuid);
       if (groups.contains("OP")) {
          permissionsModule.removeUserFromGroup(uuid, "OP");
-         context.sendMessage(MESSAGE_COMMANDS_OP_REMOVED.param("username", displayMessage));
-         PlayerRef oppedPlayerRef = Universe.get().getPlayer(uuid);
-         if (oppedPlayerRef != null) {
-            oppedPlayerRef.sendMessage(MESSAGE_COMMANDS_OP_REMOVED_TARGET);
+         context.sendMessage(Message.translation("server.commands.op.removed").param("username", displayMessage));
+         if (playerRef != null) {
+            playerRef.sendMessage(MESSAGE_COMMANDS_OP_REMOVED_TARGET);
          }
       } else {
-         context.sendMessage(MESSAGE_COMMANDS_OP_NOT_OP.param("username", displayMessage));
+         context.sendMessage(Message.translation("server.commands.op.notOp").param("username", displayMessage));
       }
    }
 }

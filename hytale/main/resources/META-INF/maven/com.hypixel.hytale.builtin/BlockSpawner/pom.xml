@@ -20,5 +20,11 @@
             <version>${revision}</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.hypixel.hytale.builtin</groupId>
+            <artifactId>BlockPhysics</artifactId>
+            <version>${revision}</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 </project>
