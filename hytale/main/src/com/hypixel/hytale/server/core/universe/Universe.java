@@ -689,42 +689,60 @@ public class Universe extends JavaPlugin implements IMessageReceiver, MetricProv
                      .getEventBus()
                      .<Void, PlayerConnectEvent>dispatchFor(PlayerConnectEvent.class)
                      .dispatch(new PlayerConnectEvent((Holder<EntityStore>)holder, playerRefComponent, lastWorld != null ? lastWorld : this.getDefaultWorld()));
-                  World world = event.getWorld() != null ? event.getWorld() : this.getDefaultWorld();
-                  if (world == null) {
+                  if (!channel.isActive()) {
                      this.players.remove(uuid, playerRefComponent);
-                     playerConnection.disconnect("No world available to join");
-                     this.getLogger().at(Level.SEVERE).log("Player '%s' (%s) could not join - no default world configured", username, uuid);
+                     this.getLogger().at(Level.INFO).log("Player '%s' (%s) disconnected during PlayerConnectEvent, cleaned up", username, uuid);
                      return CompletableFuture.completedFuture(null);
                   } else {
-                     if (lastWorldName != null && lastWorld == null) {
-                        playerComponent.sendMessage(
-                           Message.translation("server.universe.failedToFindWorld").param("lastWorldName", lastWorldName).param("name", world.getName())
-                        );
-                     }
-
-                     PacketHandler.logConnectionTimings(channel, "Processed Referral", Level.FINEST);
-                     playerRefComponent.getPacketHandler().write(new ServerTags(AssetRegistry.getClientTags()));
-                     return world.addPlayer(playerRefComponent, null, false, false).thenApply(p -> {
-                        PacketHandler.logConnectionTimings(channel, "Add to World", Level.FINEST);
-                        if (!channel.isActive()) {
-                           if (p != null) {
-                              playerComponent.remove();
-                           }
-
-                           this.players.remove(uuid, playerRefComponent);
-                           this.getLogger().at(Level.WARNING).log("Player '%s' (%s) disconnected during world join, cleaned up from universe", username, uuid);
-                           return null;
-                        } else if (playerComponent.wasRemoved()) {
-                           this.players.remove(uuid, playerRefComponent);
-                           return null;
-                        } else {
-                           return (PlayerRef)p;
-                        }
-                     }).exceptionally(throwable -> {
+                     World world = event.getWorld() != null ? event.getWorld() : this.getDefaultWorld();
+                     if (world == null) {
                         this.players.remove(uuid, playerRefComponent);
-                        playerComponent.remove();
-                        throw new RuntimeException("Exception when adding player to universe:", throwable);
-                     });
+                        playerConnection.disconnect("No world available to join");
+                        this.getLogger().at(Level.SEVERE).log("Player '%s' (%s) could not join - no default world configured", username, uuid);
+                        return CompletableFuture.completedFuture(null);
+                     } else {
+                        if (lastWorldName != null && lastWorld == null) {
+                           playerComponent.sendMessage(
+                              Message.translation("server.universe.failedToFindWorld").param("lastWorldName", lastWorldName).param("name", world.getName())
+                           );
+                        }
+
+                        PacketHandler.logConnectionTimings(channel, "Processed Referral", Level.FINEST);
+                        playerRefComponent.getPacketHandler().write(new ServerTags(AssetRegistry.getClientTags()));
+                        CompletableFuture<PlayerRef> addPlayerFuture = world.addPlayer(playerRefComponent, null, false, false);
+                        if (addPlayerFuture == null) {
+                           this.players.remove(uuid, playerRefComponent);
+                           this.getLogger().at(Level.INFO).log("Player '%s' (%s) disconnected before world addition, cleaned up", username, uuid);
+                           return CompletableFuture.completedFuture(null);
+                        } else {
+                           return addPlayerFuture.<PlayerRef>thenApply(
+                                 p -> {
+                                    PacketHandler.logConnectionTimings(channel, "Add to World", Level.FINEST);
+                                    if (!channel.isActive()) {
+                                       if (p != null) {
+                                          playerComponent.remove();
+                                       }
+
+                                       this.players.remove(uuid, playerRefComponent);
+                                       this.getLogger()
+                                          .at(Level.WARNING)
+                                          .log("Player '%s' (%s) disconnected during world join, cleaned up from universe", username, uuid);
+                                       return null;
+                                    } else if (playerComponent.wasRemoved()) {
+                                       this.players.remove(uuid, playerRefComponent);
+                                       return null;
+                                    } else {
+                                       return (PlayerRef)p;
+                                    }
+                                 }
+                              )
+                              .exceptionally(throwable -> {
+                                 this.players.remove(uuid, playerRefComponent);
+                                 playerComponent.remove();
+                                 throw new RuntimeException("Exception when adding player to universe:", throwable);
+                              });
+                        }
+                     }
                   }
                }
             }
