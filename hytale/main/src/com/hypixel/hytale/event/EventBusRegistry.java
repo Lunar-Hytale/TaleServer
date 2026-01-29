@@ -123,7 +123,7 @@ public abstract class EventBusRegistry<KeyType, EventType extends IBaseEvent<Key
       private static final short[] EMPTY_SHORT_ARRAY = new short[0];
       private final AtomicReference<short[]> prioritiesRef = new AtomicReference<>(EMPTY_SHORT_ARRAY);
       @Nonnull
-      private final Short2ObjectConcurrentHashMap<List<ConsumerType>> map = new Short2ObjectConcurrentHashMap(true, (short)-32768);
+      private final Short2ObjectConcurrentHashMap<List<ConsumerType>> map = new Short2ObjectConcurrentHashMap<>(true, (short)-32768);
 
       public boolean isEmpty() {
          return this.map.isEmpty();
@@ -132,10 +132,10 @@ public abstract class EventBusRegistry<KeyType, EventType extends IBaseEvent<Key
       public void add(@Nonnull ConsumerType eventConsumer) {
          short priority = eventConsumer.getPriority();
          boolean[] wasPriorityAdded = new boolean[]{false};
-         ((List)this.map.computeIfAbsent(priority, s -> {
+         this.map.computeIfAbsent(priority, s -> {
             wasPriorityAdded[0] = true;
-            return new CopyOnWriteArrayList();
-         })).add(eventConsumer);
+            return new CopyOnWriteArrayList<>();
+         }).add(eventConsumer);
          if (wasPriorityAdded[0]) {
             this.addPriority(priority);
          }
@@ -166,7 +166,7 @@ public abstract class EventBusRegistry<KeyType, EventType extends IBaseEvent<Key
 
       @Nullable
       public List<ConsumerType> get(short priority) {
-         return (List<ConsumerType>)this.map.get(priority);
+         return this.map.get(priority);
       }
 
       private void addPriority(short priority) {

@@ -21,7 +21,7 @@ public class PatrolPath implements IPrefabPath {
    private final UUID id;
    private final String name;
    private final int worldgenId;
-   private final Int2ObjectConcurrentHashMap<IPrefabPathWaypoint> waypoints = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<IPrefabPathWaypoint> waypoints = new Int2ObjectConcurrentHashMap<>();
    private final AtomicInteger length = new AtomicInteger(0);
    private final AtomicInteger loadedCount = new AtomicInteger(0);
    private final AtomicBoolean pathChanged = new AtomicBoolean(false);
@@ -55,7 +55,7 @@ public class PatrolPath implements IPrefabPath {
             int size = this.length.get();
 
             for (int i = 0; i < size; i++) {
-               this.waypointList.add((IPrefabPathWaypoint)this.waypoints.get(i));
+               this.waypointList.add(this.waypoints.get(i));
             }
 
             this.pathChanged.set(false);
@@ -110,7 +110,7 @@ public class PatrolPath implements IPrefabPath {
    @Override
    public void addLoadedWaypoint(@Nonnull IPrefabPathWaypoint waypoint, int pathLength, int index, int worldGenId) {
       PathPlugin.get().getLogger().at(Level.FINER).log("Loading waypoint %s to path %s.%s", index, worldGenId, this.name);
-      IPrefabPathWaypoint old = (IPrefabPathWaypoint)this.waypoints.put(index, waypoint);
+      IPrefabPathWaypoint old = this.waypoints.put(index, waypoint);
       if (old != null) {
          old.onReplaced();
          PathPlugin.get().getLogger().at(Level.WARNING).log("Waypoint %s replaced in path %s.%s", index, worldGenId, this.name);
@@ -174,7 +174,7 @@ public class PatrolPath implements IPrefabPath {
       double minDist2 = Double.MAX_VALUE;
 
       for (int i = 0; i < this.length.get(); i++) {
-         IPrefabPathWaypoint wp = (IPrefabPathWaypoint)this.waypoints.get(i);
+         IPrefabPathWaypoint wp = this.waypoints.get(i);
          if (wp != null) {
             double dist2 = origin.distanceSquaredTo(wp.getWaypointPosition(componentAccessor));
             if (dist2 < minDist2) {
@@ -190,7 +190,7 @@ public class PatrolPath implements IPrefabPath {
    @Override
    public void mergeInto(@Nonnull IPrefabPath target, int worldGenId, @Nonnull ComponentAccessor<EntityStore> componentAccessor) {
       for (int i = 0; i < this.length.get(); i++) {
-         IPrefabPathWaypoint waypoint = (IPrefabPathWaypoint)this.waypoints.get(i);
+         IPrefabPathWaypoint waypoint = this.waypoints.get(i);
          waypoint.initialise(target.getId(), target.getName(), -1, waypoint.getPauseTime(), waypoint.getObservationAngle(), worldGenId, componentAccessor);
          target.addLoadedWaypoint(waypoint, target.length(), waypoint.getOrder(), worldGenId);
       }
@@ -226,7 +226,7 @@ public class PatrolPath implements IPrefabPath {
 
    public IPrefabPathWaypoint get(int index) {
       if (index >= 0 && index < this.length.get()) {
-         return (IPrefabPathWaypoint)this.waypoints.get(index);
+         return this.waypoints.get(index);
       } else {
          throw new IndexOutOfBoundsException();
       }

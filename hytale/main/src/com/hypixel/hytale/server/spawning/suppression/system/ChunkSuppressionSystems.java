@@ -50,7 +50,7 @@ public class ChunkSuppressionSystems {
          SpawnSuppressionController spawnSuppressionController = world.getEntityStore().getStore().getResource(this.spawnSuppressionControllerResourceType);
          BlockChunk blockChunk = commandBuffer.getComponent(reference, COMPONENT_TYPE);
          long index = blockChunk.getIndex();
-         ChunkSuppressionEntry entry = (ChunkSuppressionEntry)spawnSuppressionController.getChunkSuppressionMap().get(index);
+         ChunkSuppressionEntry entry = spawnSuppressionController.getChunkSuppressionMap().get(index);
          if (entry != null) {
             commandBuffer.addComponent(reference, this.chunkSuppressionEntryComponentType, entry);
             SpawningPlugin.get().getLogger().at(Level.FINEST).log("Annotated chunk index %s on load", index);

@@ -38,8 +38,8 @@ public class DefaultAssetMap<K, T extends JsonAsset<K>> extends AssetMap<K, T> {
    protected final Map<String, ObjectSet<K>> packAssetKeys = new ConcurrentHashMap<>();
    protected final Map<Path, ObjectSet<K>> pathToKeyMap = new ConcurrentHashMap<>();
    protected final Map<K, ObjectSet<K>> assetChildren;
-   protected final Int2ObjectConcurrentHashMap<Set<K>> tagStorage = new Int2ObjectConcurrentHashMap();
-   protected final Int2ObjectConcurrentHashMap<Set<K>> unmodifiableTagStorage = new Int2ObjectConcurrentHashMap();
+   protected final Int2ObjectConcurrentHashMap<Set<K>> tagStorage = new Int2ObjectConcurrentHashMap<>();
+   protected final Int2ObjectConcurrentHashMap<Set<K>> unmodifiableTagStorage = new Int2ObjectConcurrentHashMap<>();
    protected final IntSet unmodifiableTagKeys = IntSets.unmodifiable(this.tagStorage.keySet());
 
    public DefaultAssetMap() {
@@ -238,7 +238,7 @@ public class DefaultAssetMap<K, T extends JsonAsset<K>> extends AssetMap<K, T> {
 
    @Override
    public Set<K> getKeysForTag(int tagIndex) {
-      return (Set<K>)this.unmodifiableTagStorage.getOrDefault(tagIndex, ObjectSets.emptySet());
+      return this.unmodifiableTagStorage.getOrDefault(tagIndex, ObjectSets.emptySet());
    }
 
    @Nonnull
@@ -346,11 +346,11 @@ public class DefaultAssetMap<K, T extends JsonAsset<K>> extends AssetMap<K, T> {
    }
 
    protected void putAssetTag(K key, int tag) {
-      ((Set)this.tagStorage.computeIfAbsent(tag, k -> {
+      this.tagStorage.computeIfAbsent(tag, k -> {
          ObjectOpenHashSet<K> set = new ObjectOpenHashSet(3);
          this.unmodifiableTagStorage.put(k, ObjectSets.unmodifiable(set));
          return set;
-      })).add(key);
+      }).add(key);
    }
 
    @Override

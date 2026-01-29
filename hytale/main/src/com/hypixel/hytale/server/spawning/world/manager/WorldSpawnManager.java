@@ -33,7 +33,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public class WorldSpawnManager extends SpawnManager<WorldSpawnWrapper, WorldNPCSpawn> {
-   protected final Int2ObjectConcurrentHashMap<EnvironmentSpawnParameters> environmentSpawnParametersMap = new Int2ObjectConcurrentHashMap();
+   protected final Int2ObjectConcurrentHashMap<EnvironmentSpawnParameters> environmentSpawnParametersMap = new Int2ObjectConcurrentHashMap<>();
    protected final Long2IntMap npcEnvCombinations = new Long2IntOpenHashMap();
    protected final Int2ObjectMap<IntSet> npcTypesPerEnvironment = new Int2ObjectOpenHashMap();
 
@@ -52,7 +52,7 @@ public class WorldSpawnManager extends SpawnManager<WorldSpawnWrapper, WorldNPCS
 
          while (var4.hasNext()) {
             int environmentIndex = (Integer)var4.next();
-            EnvironmentSpawnParameters envConfigs = (EnvironmentSpawnParameters)this.environmentSpawnParametersMap.get(environmentIndex);
+            EnvironmentSpawnParameters envConfigs = this.environmentSpawnParametersMap.get(environmentIndex);
             if (envConfigs != null) {
                envConfigs.getSpawnWrappers().remove(spawnWrapper);
             }
@@ -113,7 +113,7 @@ public class WorldSpawnManager extends SpawnManager<WorldSpawnWrapper, WorldNPCS
 
       while (var7.hasNext()) {
          Integer environmentIndex = (Integer)var7.next();
-         EnvironmentSpawnParameters environmentSpawnParameters = (EnvironmentSpawnParameters)this.environmentSpawnParametersMap.get(environmentIndex);
+         EnvironmentSpawnParameters environmentSpawnParameters = this.environmentSpawnParametersMap.get(environmentIndex);
          if (environmentSpawnParameters == null) {
             environmentSpawnParameters = this.createEnvironmentSpawnParameters(environmentIndex, assetMap.getAsset(environmentIndex));
          }
@@ -160,7 +160,7 @@ public class WorldSpawnManager extends SpawnManager<WorldSpawnWrapper, WorldNPCS
    }
 
    public EnvironmentSpawnParameters getEnvironmentSpawnParameters(int environmentIndex) {
-      return (EnvironmentSpawnParameters)this.environmentSpawnParametersMap.get(environmentIndex);
+      return this.environmentSpawnParametersMap.get(environmentIndex);
    }
 
    public void updateSpawnParameters(int environmentIndex, @Nullable Environment environment) {

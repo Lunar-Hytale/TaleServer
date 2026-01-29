@@ -1,6 +1,6 @@
 package com.hypixel.hytale.builtin.path;
 
-import com.hypixel.fastutil.ints.Int2ObjectConcurrentHashMap.IntBiObjFunction;
+import com.hypixel.fastutil.ints.Int2ObjectConcurrentHashMap;
 import com.hypixel.hytale.assetstore.AssetRegistry;
 import com.hypixel.hytale.builtin.path.path.IPrefabPath;
 import com.hypixel.hytale.component.ComponentAccessor;
@@ -42,10 +42,12 @@ public class PrefabPathCollection {
       return this.paths.getOrDefault(id, null);
    }
 
-   public IPrefabPath getOrConstructPath(@Nonnull UUID id, @Nonnull String name, @Nonnull IntBiObjFunction<UUID, String, IPrefabPath> pathGenerator) {
+   public IPrefabPath getOrConstructPath(
+      @Nonnull UUID id, @Nonnull String name, @Nonnull Int2ObjectConcurrentHashMap.IntBiObjFunction<UUID, String, IPrefabPath> pathGenerator
+   ) {
       IPrefabPath path = this.paths.computeIfAbsent(id, k -> {
          LOGGER.at(Level.FINER).log("Adding path %s.%s", this.worldgenId, k);
-         return (IPrefabPath)pathGenerator.apply(this.worldgenId, k, name);
+         return pathGenerator.apply(this.worldgenId, k, name);
       });
       int nameIndex = AssetRegistry.getOrCreateTagIndex(name);
       PrefabPathCollection.PathSet set = (PrefabPathCollection.PathSet)this.pathsByFriendlyName

@@ -92,7 +92,7 @@ public class ChunkStore implements WorldProvider {
    @Nonnull
    private final World world;
    @Nonnull
-   private final Long2ObjectConcurrentHashMap<ChunkStore.ChunkLoadState> chunks = new Long2ObjectConcurrentHashMap(true, ChunkUtil.NOT_FOUND);
+   private final Long2ObjectConcurrentHashMap<ChunkStore.ChunkLoadState> chunks = new Long2ObjectConcurrentHashMap<>(true, ChunkUtil.NOT_FOUND);
    private Store<ChunkStore> store;
    @Nullable
    private IChunkLoader loader;
@@ -231,7 +231,7 @@ public class ChunkStore implements WorldProvider {
 
       assert worldChunkComponent != null;
 
-      ChunkStore.ChunkLoadState chunkState = (ChunkStore.ChunkLoadState)this.chunks.get(worldChunkComponent.getIndex());
+      ChunkStore.ChunkLoadState chunkState = this.chunks.get(worldChunkComponent.getIndex());
       if (chunkState == null) {
          throw new IllegalStateException("Expected the ChunkLoadState to exist!");
       } else {
@@ -293,7 +293,7 @@ public class ChunkStore implements WorldProvider {
       assert worldChunkComponent != null;
 
       long index = worldChunkComponent.getIndex();
-      ChunkStore.ChunkLoadState chunkState = (ChunkStore.ChunkLoadState)this.chunks.get(index);
+      ChunkStore.ChunkLoadState chunkState = this.chunks.get(index);
       long stamp = chunkState.lock.readLock();
 
       try {
@@ -311,7 +311,7 @@ public class ChunkStore implements WorldProvider {
 
    @Nullable
    public Ref<ChunkStore> getChunkReference(long index) {
-      ChunkStore.ChunkLoadState chunkState = (ChunkStore.ChunkLoadState)this.chunks.get(index);
+      ChunkStore.ChunkLoadState chunkState = this.chunks.get(index);
       if (chunkState == null) {
          return null;
       } else {
@@ -387,7 +387,7 @@ public class ChunkStore implements WorldProvider {
       } else {
          ChunkStore.ChunkLoadState chunkState;
          if ((flags & 3) == 3) {
-            chunkState = (ChunkStore.ChunkLoadState)this.chunks.get(index);
+            chunkState = this.chunks.get(index);
             if (chunkState == null) {
                return CompletableFuture.completedFuture(null);
             }
@@ -410,7 +410,7 @@ public class ChunkStore implements WorldProvider {
                chunkState.lock.unlockRead(stamp);
             }
          } else {
-            chunkState = (ChunkStore.ChunkLoadState)this.chunks.computeIfAbsent(index, l -> new ChunkStore.ChunkLoadState());
+            chunkState = this.chunks.computeIfAbsent(index, l -> new ChunkStore.ChunkLoadState());
          }
 
          long stamp = chunkState.lock.writeLock();
@@ -599,7 +599,7 @@ public class ChunkStore implements WorldProvider {
    }
 
    public boolean isChunkOnBackoff(long index, long maxFailureBackoffNanos) {
-      ChunkStore.ChunkLoadState chunkState = (ChunkStore.ChunkLoadState)this.chunks.get(index);
+      ChunkStore.ChunkLoadState chunkState = this.chunks.get(index);
       if (chunkState == null) {
          return false;
       } else {

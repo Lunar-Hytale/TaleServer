@@ -105,7 +105,7 @@ public class DelegateItemContainer<T extends ItemContainer> extends ItemContaine
       if (map == null) {
          return false;
       } else {
-         SlotFilter filter = (SlotFilter)map.get(slot);
+         SlotFilter filter = map.get(slot);
          return filter == null ? false : !filter.test(actionType, this, slot, itemStack);
       }
    }
@@ -139,7 +139,7 @@ public class DelegateItemContainer<T extends ItemContainer> extends ItemContaine
    public void setSlotFilter(FilterActionType actionType, short slot, @Nullable SlotFilter filter) {
       validateSlotIndex(slot, this.getCapacity());
       if (filter != null) {
-         this.slotFilters.computeIfAbsent(actionType, k -> new Int2ObjectConcurrentHashMap()).put(slot, filter);
+         this.slotFilters.computeIfAbsent(actionType, k -> new Int2ObjectConcurrentHashMap<>()).put(slot, filter);
       } else {
          this.slotFilters.computeIfPresent(actionType, (k, map) -> {
             map.remove(slot);

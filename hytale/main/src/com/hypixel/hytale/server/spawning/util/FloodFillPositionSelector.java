@@ -199,7 +199,7 @@ public class FloodFillPositionSelector implements Component<EntityStore> {
                   .getStore()
                   .getResource(SpawnSuppressionController.getResourceType());
                long indexChunk = ChunkUtil.indexChunk(ChunkUtil.chunkCoordinate(position.x), ChunkUtil.chunkCoordinate(position.z));
-               ChunkSuppressionEntry suppressionEntry = (ChunkSuppressionEntry)suppressionController.getChunkSuppressionMap().get(indexChunk);
+               ChunkSuppressionEntry suppressionEntry = suppressionController.getChunkSuppressionMap().get(indexChunk);
                if ((suppressionEntry == null || !suppressionEntry.isSuppressingRoleAt(roleIndex, position.y))
                   && spawningContext.set(this.world, position.x, position.y, position.z)
                   && spawningContext.canSpawn() == SpawnTestResult.TEST_OK) {
@@ -427,7 +427,7 @@ public class FloodFillPositionSelector implements Component<EntityStore> {
                int z = offsetOriginZ + zFromIndex(chosenIndex, this.size);
                long newChunkIndex = ChunkUtil.indexChunk(ChunkUtil.chunkCoordinate(x), ChunkUtil.chunkCoordinate(z));
                if (chunkIndex != newChunkIndex) {
-                  suppressionEntry = (ChunkSuppressionEntry)chunkSuppressionMap.get(newChunkIndex);
+                  suppressionEntry = chunkSuppressionMap.get(newChunkIndex);
                   chunkIndex = newChunkIndex;
                }
 
@@ -447,7 +447,7 @@ public class FloodFillPositionSelector implements Component<EntityStore> {
                   z = offsetOriginZ + zFromIndex(chosenIndex, this.size);
                   newChunkIndex = ChunkUtil.indexChunk(ChunkUtil.chunkCoordinate(x), ChunkUtil.chunkCoordinate(z));
                   if (chunkIndex != newChunkIndex) {
-                     suppressionEntry = (ChunkSuppressionEntry)chunkSuppressionMap.get(newChunkIndex);
+                     suppressionEntry = chunkSuppressionMap.get(newChunkIndex);
                      chunkIndex = newChunkIndex;
                   }
 

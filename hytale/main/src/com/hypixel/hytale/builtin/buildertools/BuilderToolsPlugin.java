@@ -305,8 +305,8 @@ public class BuilderToolsPlugin extends JavaPlugin implements SelectionProvider,
    private ScheduledFuture<?> cleanupTask;
    private ComponentType<EntityStore, BuilderToolsUserData> userDataComponentType;
    private ComponentType<EntityStore, PrefabAnchor> prefabAnchorComponentType;
-   private final Int2ObjectConcurrentHashMap<ConcurrentHashMap<UUID, UUID>> pastedPrefabPathUUIDMap = new Int2ObjectConcurrentHashMap();
-   private final Int2ObjectConcurrentHashMap<ConcurrentHashMap<String, UUID>> pastedPrefabPathNameToUUIDMap = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<ConcurrentHashMap<UUID, UUID>> pastedPrefabPathUUIDMap = new Int2ObjectConcurrentHashMap<>();
+   private final Int2ObjectConcurrentHashMap<ConcurrentHashMap<String, UUID>> pastedPrefabPathNameToUUIDMap = new Int2ObjectConcurrentHashMap<>();
    private static final float SMOOTHING_KERNEL_TOTAL = 27.0F;
    private static final int[] SMOOTHING_KERNEL = new int[]{1, 2, 1, 2, 3, 2, 1, 2, 1, 2, 3, 2, 3, 4, 3, 2, 3, 2, 1, 2, 1, 2, 3, 2, 1, 2, 1};
    private final Config<BuilderToolsPlugin.BuilderToolsConfig> config = this.withConfig("BuilderToolsModule", BuilderToolsPlugin.BuilderToolsConfig.CODEC);
@@ -843,11 +843,11 @@ public class BuilderToolsPlugin extends JavaPlugin implements SelectionProvider,
 
    @Nonnull
    public UUID getNewPathIdOnPrefabPasted(@Nullable UUID id, String name, int prefabId) {
-      ConcurrentHashMap<UUID, UUID> prefabIdMap = (ConcurrentHashMap<UUID, UUID>)this.pastedPrefabPathUUIDMap.get(prefabId);
+      ConcurrentHashMap<UUID, UUID> prefabIdMap = this.pastedPrefabPathUUIDMap.get(prefabId);
       if (id != null) {
          return prefabIdMap.computeIfAbsent(id, k -> UUID.randomUUID());
       } else {
-         ConcurrentHashMap<String, UUID> prefabNameMap = (ConcurrentHashMap<String, UUID>)this.pastedPrefabPathNameToUUIDMap.get(prefabId);
+         ConcurrentHashMap<String, UUID> prefabNameMap = this.pastedPrefabPathNameToUUIDMap.get(prefabId);
          UUID newId = prefabNameMap.computeIfAbsent(name, k -> UUID.randomUUID());
          prefabIdMap.put(newId, newId);
          return newId;
@@ -4541,8 +4541,8 @@ public class BuilderToolsPlugin extends JavaPlugin implements SelectionProvider,
 
       public void handle(@Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer, @Nonnull PrefabPasteEvent event) {
          if (event.isPasteStart()) {
-            this.plugin.pastedPrefabPathUUIDMap.put(event.getPrefabId(), new ConcurrentHashMap());
-            this.plugin.pastedPrefabPathNameToUUIDMap.put(event.getPrefabId(), new ConcurrentHashMap());
+            this.plugin.pastedPrefabPathUUIDMap.put(event.getPrefabId(), new ConcurrentHashMap<>());
+            this.plugin.pastedPrefabPathNameToUUIDMap.put(event.getPrefabId(), new ConcurrentHashMap<>());
          } else {
             this.plugin.pastedPrefabPathUUIDMap.remove(event.getPrefabId());
             this.plugin.pastedPrefabPathNameToUUIDMap.remove(event.getPrefabId());

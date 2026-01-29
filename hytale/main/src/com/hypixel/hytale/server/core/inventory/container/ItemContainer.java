@@ -1,7 +1,6 @@
 package com.hypixel.hytale.server.core.inventory.container;
 
-import com.hypixel.fastutil.shorts.Short2ObjectConcurrentHashMap.ShortBiObjConsumer;
-import com.hypixel.fastutil.shorts.Short2ObjectConcurrentHashMap.ShortFunction;
+import com.hypixel.fastutil.shorts.Short2ObjectConcurrentHashMap;
 import com.hypixel.hytale.codec.lookup.CodecMapCodec;
 import com.hypixel.hytale.event.EventPriority;
 import com.hypixel.hytale.event.EventRegistration;
@@ -1191,7 +1190,7 @@ public abstract class ItemContainer {
       }
    }
 
-   public <T> void forEachWithMeta(@Nonnull ShortBiObjConsumer<ItemStack, T> consumer, T meta) {
+   public <T> void forEachWithMeta(@Nonnull Short2ObjectConcurrentHashMap.ShortBiObjConsumer<ItemStack, T> consumer, T meta) {
       for (short i = 0; i < this.getCapacity(); i++) {
          ItemStack itemStack = this.getItemStack(i);
          if (!ItemStack.isEmpty(itemStack)) {
@@ -1391,17 +1390,17 @@ public abstract class ItemContainer {
    }
 
    public static <T extends ItemContainer> T ensureContainerCapacity(
-      @Nullable T inputContainer, short capacity, @Nonnull ShortFunction<T> newContainerSupplier, List<ItemStack> remainder
+      @Nullable T inputContainer, short capacity, @Nonnull Short2ObjectConcurrentHashMap.ShortFunction<T> newContainerSupplier, List<ItemStack> remainder
    ) {
       if (inputContainer == null) {
-         return (T)newContainerSupplier.apply(capacity);
+         return newContainerSupplier.apply(capacity);
       } else {
-         return inputContainer.getCapacity() == capacity ? inputContainer : copy(inputContainer, (T)newContainerSupplier.apply(capacity), remainder);
+         return inputContainer.getCapacity() == capacity ? inputContainer : copy(inputContainer, newContainerSupplier.apply(capacity), remainder);
       }
    }
 
-   public static ItemContainer getNewContainer(short capacity, @Nonnull ShortFunction<ItemContainer> supplier) {
-      return (ItemContainer)(capacity > 0 ? (ItemContainer)supplier.apply(capacity) : EmptyItemContainer.INSTANCE);
+   public static ItemContainer getNewContainer(short capacity, @Nonnull Short2ObjectConcurrentHashMap.ShortFunction<ItemContainer> supplier) {
+      return (ItemContainer)(capacity > 0 ? supplier.apply(capacity) : EmptyItemContainer.INSTANCE);
    }
 
    public record ItemContainerChangeEvent(ItemContainer container, Transaction transaction) implements IEvent<Void> {

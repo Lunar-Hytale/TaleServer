@@ -95,7 +95,7 @@ public class WorldSpawnJobSystems {
             spawningContext.setChunk(chunk, spawnJobData.getEnvironmentIndex());
             SuppressionSpanHelper suppressionSpanHelper = spawnJobData.getSuppressionSpanHelper();
             Long2ObjectConcurrentHashMap<ChunkSuppressionEntry> chunkSuppressionMap = spawnSuppressionController.getChunkSuppressionMap();
-            suppressionSpanHelper.optimiseSuppressedSpans(roleIndex, (ChunkSuppressionEntry)chunkSuppressionMap.get(chunk.getIndex()));
+            suppressionSpanHelper.optimiseSuppressedSpans(roleIndex, chunkSuppressionMap.get(chunk.getIndex()));
 
             WorldSpawnJobSystems.Result var14;
             try {

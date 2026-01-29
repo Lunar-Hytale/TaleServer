@@ -55,7 +55,7 @@ import javax.annotation.Nullable;
 
 public class FlockPlugin extends JavaPlugin {
    private static FlockPlugin instance;
-   private final Int2ObjectConcurrentHashMap<Map<UUID, UUID>> prefabFlockRemappings = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<Map<UUID, UUID>> prefabFlockRemappings = new Int2ObjectConcurrentHashMap<>();
    private ComponentType<EntityStore, Flock> flockComponentType;
    private ComponentType<EntityStore, FlockMembership> flockMembershipComponentType;
    private ComponentType<EntityStore, PersistentFlockData> persistentFlockDataComponentType;
@@ -135,7 +135,7 @@ public class FlockPlugin extends JavaPlugin {
 
    @Nonnull
    public UUID getPrefabRemappedFlockReference(int prefabId, UUID oldId) {
-      return ((Map)this.prefabFlockRemappings.get(prefabId)).computeIfAbsent(oldId, s -> UUID.randomUUID());
+      return this.prefabFlockRemappings.get(prefabId).computeIfAbsent(oldId, s -> UUID.randomUUID());
    }
 
    @Nullable
@@ -305,7 +305,7 @@ public class FlockPlugin extends JavaPlugin {
 
       public void handle(@Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer, @Nonnull PrefabPasteEvent event) {
          if (event.isPasteStart()) {
-            this.plugin.prefabFlockRemappings.put(event.getPrefabId(), new HashMap());
+            this.plugin.prefabFlockRemappings.put(event.getPrefabId(), new HashMap<>());
          } else {
             this.plugin.prefabFlockRemappings.remove(event.getPrefabId());
          }
