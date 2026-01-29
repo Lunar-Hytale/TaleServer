@@ -12,8 +12,8 @@ import javax.annotation.Nonnull;
 
 public abstract class AssetMapWithIndexes<K, T extends JsonAsset<K>> extends DefaultAssetMap<K, T> {
    public static final int NOT_FOUND = Integer.MIN_VALUE;
-   protected final Int2ObjectConcurrentHashMap<IntSet> indexedTagStorage = new Int2ObjectConcurrentHashMap();
-   protected final Int2ObjectConcurrentHashMap<IntSet> unmodifiableIndexedTagStorage = new Int2ObjectConcurrentHashMap();
+   protected final Int2ObjectConcurrentHashMap<IntSet> indexedTagStorage = new Int2ObjectConcurrentHashMap<>();
+   protected final Int2ObjectConcurrentHashMap<IntSet> unmodifiableIndexedTagStorage = new Int2ObjectConcurrentHashMap<>();
 
    @Override
    protected void clear() {
@@ -23,7 +23,7 @@ public abstract class AssetMapWithIndexes<K, T extends JsonAsset<K>> extends Def
    }
 
    public IntSet getIndexesForTag(int index) {
-      return (IntSet)this.unmodifiableIndexedTagStorage.getOrDefault(index, IntSets.EMPTY_SET);
+      return this.unmodifiableIndexedTagStorage.getOrDefault(index, IntSets.EMPTY_SET);
    }
 
    @Override
@@ -44,11 +44,11 @@ public abstract class AssetMapWithIndexes<K, T extends JsonAsset<K>> extends Def
 
    protected void putAssetTag(K key, int index, int tag) {
       this.putAssetTag(key, tag);
-      ((IntSet)this.indexedTagStorage.computeIfAbsent(tag, k -> {
+      this.indexedTagStorage.computeIfAbsent(tag, k -> {
          IntSet set = Int2ObjectConcurrentHashMap.newKeySet(3);
          this.unmodifiableIndexedTagStorage.put(k, IntSets.unmodifiable(set));
          return set;
-      })).add(index);
+      }).add(index);
    }
 
    @Override

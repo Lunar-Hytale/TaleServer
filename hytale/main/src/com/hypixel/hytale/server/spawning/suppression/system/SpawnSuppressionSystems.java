@@ -105,7 +105,7 @@ public class SpawnSuppressionSystems {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
                long chunkIndex = ChunkUtil.indexChunk(chunkX, chunkZ);
                SpawningPlugin.get().getLogger().at(Level.FINEST).log("Suppressing chunk index %s with id '%s'", chunkIndex, suppressionId);
-               ChunkSuppressionEntry oldEntry = (ChunkSuppressionEntry)chunkSuppressionMap.get(chunkIndex);
+               ChunkSuppressionEntry oldEntry = chunkSuppressionMap.get(chunkIndex);
                List<ChunkSuppressionEntry.SuppressionSpan> suppressionSpanList;
                if (oldEntry != null) {
                   suppressionSpanList = new ObjectArrayList(oldEntry.getSuppressionSpans());
@@ -390,7 +390,7 @@ public class SpawnSuppressionSystems {
                   for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
                      long chunkIndex = ChunkUtil.indexChunk(chunkX, chunkZ);
                      ChunkSuppressionEntry chunkEntry = null;
-                     ChunkSuppressionEntry oldEntry = (ChunkSuppressionEntry)chunkSuppressionMap.get(chunkIndex);
+                     ChunkSuppressionEntry oldEntry = chunkSuppressionMap.get(chunkIndex);
                      if (oldEntry.containsOnly(uuid)) {
                         chunkSuppressionMap.remove(chunkIndex);
                      } else {

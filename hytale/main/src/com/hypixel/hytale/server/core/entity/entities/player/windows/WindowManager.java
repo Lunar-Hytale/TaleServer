@@ -32,9 +32,9 @@ public class WindowManager {
    private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
    private final AtomicInteger windowId = new AtomicInteger(1);
    @Nonnull
-   private final Int2ObjectConcurrentHashMap<Window> windows = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<Window> windows = new Int2ObjectConcurrentHashMap<>();
    @Nonnull
-   private final Int2ObjectConcurrentHashMap<EventRegistration<?, ?>> windowChangeEvents = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<EventRegistration<?, ?>> windowChangeEvents = new Int2ObjectConcurrentHashMap<>();
    private PlayerRef playerRef;
 
    public void init(@Nonnull PlayerRef playerRef) {
@@ -47,10 +47,10 @@ public class WindowManager {
          throw new IllegalArgumentException("Client opened window must be registered in Window.CLIENT_REQUESTABLE_WINDOW_TYPES but got: " + window.getType());
       } else {
          int id = 0;
-         Window oldWindow = (Window)this.windows.remove(0);
+         Window oldWindow = this.windows.remove(0);
          if (oldWindow != null) {
             if (oldWindow instanceof ItemContainerWindow) {
-               ((EventRegistration)this.windowChangeEvents.remove(oldWindow.getId())).unregister();
+               this.windowChangeEvents.remove(oldWindow.getId()).unregister();
             }
 
             oldWindow.onClose(ref, store);
@@ -159,7 +159,7 @@ public class WindowManager {
       if (id == -1) {
          throw new IllegalArgumentException("Window id -1 is invalid!");
       } else {
-         return (Window)this.windows.get(id);
+         return this.windows.get(id);
       }
    }
 
@@ -194,9 +194,9 @@ public class WindowManager {
          assert playerRefComponent != null;
 
          playerRefComponent.getPacketHandler().writeNoCache(new CloseWindow(id));
-         Window window = (Window)this.windows.remove(id);
+         Window window = this.windows.remove(id);
          if (window instanceof ItemContainerWindow) {
-            ((EventRegistration)this.windowChangeEvents.remove(window.getId())).unregister();
+            this.windowChangeEvents.remove(window.getId()).unregister();
          }
 
          if (window == null) {

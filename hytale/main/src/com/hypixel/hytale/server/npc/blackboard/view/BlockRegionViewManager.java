@@ -14,7 +14,7 @@ import javax.annotation.Nonnull;
 
 public abstract class BlockRegionViewManager<Type extends BlockRegionView<Type>> implements IBlackboardViewManager<Type> {
    @Nonnull
-   protected Long2ObjectConcurrentHashMap<Type> views = new Long2ObjectConcurrentHashMap(true, ChunkUtil.NOT_FOUND);
+   protected Long2ObjectConcurrentHashMap<Type> views = new Long2ObjectConcurrentHashMap<>(true, ChunkUtil.NOT_FOUND);
    @Nonnull
    protected LongArrayFIFOQueue removalQueue = new LongArrayFIFOQueue();
 
@@ -37,7 +37,7 @@ public abstract class BlockRegionViewManager<Type extends BlockRegionView<Type>>
    }
 
    public Type get(long index, Blackboard blackboard) {
-      Type view = (Type)this.views.getOrDefault(index, null);
+      Type view = this.views.getOrDefault(index, null);
       if (view == null) {
          view = this.createView(index, blackboard);
          this.views.put(index, view);
@@ -49,7 +49,7 @@ public abstract class BlockRegionViewManager<Type extends BlockRegionView<Type>>
    protected abstract Type createView(long var1, Blackboard var3);
 
    public Type getIfExists(long index) {
-      return (Type)this.views.get(index);
+      return this.views.get(index);
    }
 
    @Override

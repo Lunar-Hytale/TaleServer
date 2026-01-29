@@ -91,7 +91,7 @@ public class BuilderManager {
    private static final String SELF_GROUP_TAG = "$self";
    private static int playerGroupID;
    private static int selfGroupID;
-   private final Int2ObjectConcurrentHashMap<BuilderInfo> builderCache = new Int2ObjectConcurrentHashMap();
+   private final Int2ObjectConcurrentHashMap<BuilderInfo> builderCache = new Int2ObjectConcurrentHashMap<>();
    private final String elementTypeName = "NPC";
    private final String defaultFileType = NPCPlugin.FACTORY_CLASS_ROLE;
    private boolean autoReload;
@@ -167,7 +167,7 @@ public class BuilderManager {
       if (index < 0) {
          return null;
       } else {
-         BuilderInfo info = (BuilderInfo)this.builderCache.get(index);
+         BuilderInfo info = this.builderCache.get(index);
          if (info != null) {
             return info.getKeyName();
          } else {
@@ -218,7 +218,7 @@ public class BuilderManager {
 
    @Nullable
    public BuilderInfo tryGetBuilderInfo(int builderIndex) {
-      return builderIndex < 0 ? null : (BuilderInfo)this.builderCache.get(builderIndex);
+      return builderIndex < 0 ? null : this.builderCache.get(builderIndex);
    }
 
    public void unloadBuilders(AssetPack pack) {
@@ -359,7 +359,7 @@ public class BuilderManager {
             this.reloadDependants(builderIndex);
          }
 
-         BuilderInfo builder = (BuilderInfo)this.builderCache.get(builderIndex);
+         BuilderInfo builder = this.builderCache.get(builderIndex);
          onBuilderReloaded(builder);
          loadedBuilders.put(builderIndex, builder);
       } catch (Throwable var10) {
@@ -915,7 +915,7 @@ public class BuilderManager {
    }
 
    private void removeBuilder(int index) {
-      BuilderInfo builder = (BuilderInfo)this.builderCache.remove(index);
+      BuilderInfo builder = this.builderCache.remove(index);
       if (builder != null) {
          builder.setRemoved();
       }
@@ -1083,7 +1083,7 @@ public class BuilderManager {
             }
 
             if (validatedDependencies.add(dependency)) {
-               BuilderInfo childBuilder = (BuilderInfo)this.builderCache.get(dependency);
+               BuilderInfo childBuilder = this.builderCache.get(dependency);
                if (childBuilder == null) {
                   NPCPlugin.get()
                      .getLogger()
@@ -1235,7 +1235,7 @@ public class BuilderManager {
                         BuilderManager.this.reloadDependants(builderIndex);
                      }
 
-                     BuilderInfo builder = (BuilderInfo)BuilderManager.this.builderCache.get(builderIndex);
+                     BuilderInfo builder = BuilderManager.this.builderCache.get(builderIndex);
                      BuilderManager.onBuilderReloaded(builder);
                      loadedBuilders.put(builderIndex, builder);
                   }

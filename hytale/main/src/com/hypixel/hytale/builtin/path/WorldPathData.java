@@ -1,6 +1,6 @@
 package com.hypixel.hytale.builtin.path;
 
-import com.hypixel.fastutil.ints.Int2ObjectConcurrentHashMap.IntBiObjFunction;
+import com.hypixel.fastutil.ints.Int2ObjectConcurrentHashMap;
 import com.hypixel.hytale.builtin.path.path.IPrefabPath;
 import com.hypixel.hytale.component.ComponentAccessor;
 import com.hypixel.hytale.component.Resource;
@@ -40,7 +40,7 @@ public class WorldPathData implements Resource<EntityStore> {
    }
 
    public IPrefabPath getOrConstructPrefabPath(
-      int worldgenId, @Nonnull UUID id, @Nonnull String name, @Nonnull IntBiObjFunction<UUID, String, IPrefabPath> pathGenerator
+      int worldgenId, @Nonnull UUID id, @Nonnull String name, @Nonnull Int2ObjectConcurrentHashMap.IntBiObjFunction<UUID, String, IPrefabPath> pathGenerator
    ) {
       PrefabPathCollection entry = this.getPrefabPathCollection(worldgenId);
       return entry.getOrConstructPath(id, name, pathGenerator);

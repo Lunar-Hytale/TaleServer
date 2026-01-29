@@ -50,10 +50,10 @@ public class WorldMapManager extends TickingThread {
    private final HytaleLogger logger;
    @Nonnull
    private final World world;
-   private final Long2ObjectConcurrentHashMap<WorldMapManager.ImageEntry> images = new Long2ObjectConcurrentHashMap(
+   private final Long2ObjectConcurrentHashMap<WorldMapManager.ImageEntry> images = new Long2ObjectConcurrentHashMap<>(
       true, ChunkUtil.indexChunk(Integer.MIN_VALUE, Integer.MIN_VALUE)
    );
-   private final Long2ObjectConcurrentHashMap<CompletableFuture<MapImage>> generating = new Long2ObjectConcurrentHashMap(
+   private final Long2ObjectConcurrentHashMap<CompletableFuture<MapImage>> generating = new Long2ObjectConcurrentHashMap<>(
       true, ChunkUtil.indexChunk(Integer.MIN_VALUE, Integer.MIN_VALUE)
    );
    private final Map<String, WorldMapManager.MarkerProvider> markerProviders = new ConcurrentHashMap<>();
@@ -212,7 +212,7 @@ public class WorldMapManager extends TickingThread {
 
    @Nullable
    public MapImage getImageIfInMemory(long index) {
-      WorldMapManager.ImageEntry pair = (WorldMapManager.ImageEntry)this.images.get(index);
+      WorldMapManager.ImageEntry pair = this.images.get(index);
       return pair != null ? pair.image : null;
    }
 
@@ -223,12 +223,12 @@ public class WorldMapManager extends TickingThread {
 
    @Nonnull
    public CompletableFuture<MapImage> getImageAsync(long index) {
-      WorldMapManager.ImageEntry pair = (WorldMapManager.ImageEntry)this.images.get(index);
+      WorldMapManager.ImageEntry pair = this.images.get(index);
       MapImage image = pair != null ? pair.image : null;
       if (image != null) {
          return CompletableFuture.completedFuture(image);
       } else {
-         CompletableFuture<MapImage> gen = (CompletableFuture<MapImage>)this.generating.get(index);
+         CompletableFuture<MapImage> gen = this.generating.get(index);
          if (gen != null) {
             return gen;
          } else {

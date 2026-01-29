@@ -26,7 +26,7 @@ public class SpawnSuppressionController implements Resource<EntityStore> {
       )
       .add()
       .build();
-   private final Long2ObjectConcurrentHashMap<ChunkSuppressionEntry> chunkSuppressionMap = new Long2ObjectConcurrentHashMap(
+   private final Long2ObjectConcurrentHashMap<ChunkSuppressionEntry> chunkSuppressionMap = new Long2ObjectConcurrentHashMap<>(
       true, ChunkUtil.indexChunk(Integer.MIN_VALUE, Integer.MIN_VALUE)
    );
    private Map<UUID, SpawnSuppressorEntry> spawnSuppressorMap = new ConcurrentHashMap<>();

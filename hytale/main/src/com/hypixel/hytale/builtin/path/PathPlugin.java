@@ -136,9 +136,7 @@ public class PathPlugin extends JavaPlugin {
 
       public void handle(@Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer, @Nonnull PrefabPasteEvent event) {
          if (!event.isPasteStart()) {
-            ConcurrentHashMap<UUID, UUID> pastedPrefabPathUUIDMap = (ConcurrentHashMap<UUID, UUID>)BuilderToolsPlugin.get()
-               .getPastedPrefabPathUUIDMap()
-               .get(event.getPrefabId());
+            ConcurrentHashMap<UUID, UUID> pastedPrefabPathUUIDMap = BuilderToolsPlugin.get().getPastedPrefabPathUUIDMap().get(event.getPrefabId());
             if (pastedPrefabPathUUIDMap != null) {
                WorldPathData worldPathDataResource = store.getResource(WorldPathData.getResourceType());
 

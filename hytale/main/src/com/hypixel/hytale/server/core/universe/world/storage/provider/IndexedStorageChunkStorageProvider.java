@@ -113,7 +113,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
                IndexedStorageChunkStorageProvider.IndexedStorageCache.CacheEntryMetricData[]::new
             )
          );
-      private final Long2ObjectConcurrentHashMap<IndexedStorageFile> cache = new Long2ObjectConcurrentHashMap(true, ChunkUtil.NOT_FOUND);
+      private final Long2ObjectConcurrentHashMap<IndexedStorageFile> cache = new Long2ObjectConcurrentHashMap<>(true, ChunkUtil.NOT_FOUND);
       private Path path;
 
       public static ResourceType<ChunkStore, IndexedStorageChunkStorageProvider.IndexedStorageCache> getResourceType() {
@@ -150,7 +150,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
 
       @Nullable
       public IndexedStorageFile getOrTryOpen(int regionX, int regionZ, boolean flushOnWrite) {
-         return (IndexedStorageFile)this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
+         return this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
             Path regionFile = this.path.resolve(IndexedStorageChunkStorageProvider.toFileName(regionX, regionZ));
             if (!Files.exists(regionFile)) {
                return null;
@@ -170,7 +170,7 @@ public class IndexedStorageChunkStorageProvider implements IChunkStorageProvider
 
       @Nonnull
       public IndexedStorageFile getOrCreate(int regionX, int regionZ, boolean flushOnWrite) {
-         return (IndexedStorageFile)this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
+         return this.cache.computeIfAbsent(ChunkUtil.indexChunk(regionX, regionZ), k -> {
             try {
                if (!Files.exists(this.path)) {
                   try {

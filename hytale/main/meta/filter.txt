@@ -1,4 +1,4 @@
-+ com/hypixel/hytale/**
++ com/hypixel/**
 + META-INF/**
 - META-INF/*.SF
 - META-INF/*.RSA
