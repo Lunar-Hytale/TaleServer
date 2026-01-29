@@ -10,13 +10,13 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.security.cert.X509Certificate;
 import java.text.ParseException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
@@ -28,14 +28,14 @@ public class JWTValidator {
    private static final JWSAlgorithm SUPPORTED_ALGORITHM = JWSAlgorithm.EdDSA;
    private static final int MIN_SIGNATURE_LENGTH = 80;
    private static final int MAX_SIGNATURE_LENGTH = 90;
+   private static final Duration JWKS_REFRESH_MIN_INTERVAL = Duration.ofMinutes(5L);
    private final SessionServiceClient sessionServiceClient;
    private final String expectedIssuer;
    private final String expectedAudience;
    private volatile JWKSet cachedJwkSet;
-   private volatile long jwksCacheExpiry;
-   private final long jwksCacheDurationMs = TimeUnit.HOURS.toMillis(1L);
    private final ReentrantLock jwksFetchLock = new ReentrantLock();
    private volatile CompletableFuture<JWKSet> pendingFetch = null;
+   private volatile Instant lastJwksRefresh;
 
    public JWTValidator(@Nonnull SessionServiceClient sessionServiceClient, @Nonnull String expectedIssuer, @Nonnull String expectedAudience) {
       this.sessionServiceClient = sessionServiceClient;
@@ -171,15 +171,14 @@ public class JWTValidator {
 
    @Nullable
    private JWKSet getJwkSet(boolean forceRefresh) {
-      long now = System.currentTimeMillis();
-      if (!forceRefresh && this.cachedJwkSet != null && now < this.jwksCacheExpiry) {
+      if (!forceRefresh && this.cachedJwkSet != null) {
          return this.cachedJwkSet;
       } else {
          this.jwksFetchLock.lock();
 
-         JWKSet var5;
+         JWKSet var3;
          try {
-            if (!forceRefresh && this.cachedJwkSet != null && now < this.jwksCacheExpiry) {
+            if (!forceRefresh && this.cachedJwkSet != null) {
                return this.cachedJwkSet;
             }
 
@@ -196,7 +195,7 @@ public class JWTValidator {
             this.jwksFetchLock.unlock();
 
             try {
-               var5 = existing.join();
+               var3 = existing.join();
             } finally {
                this.jwksFetchLock.lock();
             }
@@ -204,7 +203,7 @@ public class JWTValidator {
             this.jwksFetchLock.unlock();
          }
 
-         return var5;
+         return var3;
       }
    }
 
@@ -228,8 +227,8 @@ public class JWTValidator {
             } else {
                JWKSet newSet = new JWKSet(jwkList);
                this.cachedJwkSet = newSet;
-               this.jwksCacheExpiry = System.currentTimeMillis() + this.jwksCacheDurationMs;
-               LOGGER.at(Level.INFO).log("JWKS loaded with %d keys", jwkList.size());
+               this.lastJwksRefresh = Instant.now();
+               LOGGER.at(Level.INFO).log("JWKS loaded with %d keys (cached permanently)", jwkList.size());
                return newSet;
             }
          } catch (Exception var8) {
@@ -248,11 +247,19 @@ public class JWTValidator {
          return false;
       } else if (this.verifySignature(signedJWT, jwkSet)) {
          return true;
+      } else if (!this.canForceRefreshJwks()) {
+         LOGGER.at(Level.FINE).log("Signature verification failed but JWKS was refreshed recently; skipping refresh");
+         return false;
       } else {
          LOGGER.at(Level.INFO).log("Signature verification failed with cached JWKS, retrying with fresh keys");
          JWKSet freshJwkSet = this.getJwkSet(true);
          return freshJwkSet != null && freshJwkSet != jwkSet ? this.verifySignature(signedJWT, freshJwkSet) : false;
       }
+   }
+
+   private boolean canForceRefreshJwks() {
+      Instant lastRefresh = this.lastJwksRefresh;
+      return lastRefresh == null ? true : Duration.between(lastRefresh, Instant.now()).compareTo(JWKS_REFRESH_MIN_INTERVAL) >= 0;
    }
 
    @Nullable
@@ -276,7 +283,6 @@ public class JWTValidator {
 
       try {
          this.cachedJwkSet = null;
-         this.jwksCacheExpiry = 0L;
          this.pendingFetch = null;
       } finally {
          this.jwksFetchLock.unlock();
