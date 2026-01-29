@@ -27,6 +27,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find Version
+        id: upver
+        run: |
+          COUNT=$(find hytale/versions -mindepth 1 -maxdepth 1 ! -name ".*" | wc -l)
+          echo "version=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Create upstream branch
+        run: |
+          VERSION=${{ steps.upver.outputs.version }}
+          BRANCH="upstream/v$VERSION"
+          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
+            echo "Branch $BRANCH already exists."
+            exit 1
+          fi
+          echo "Using branch: $BRANCH"
+
+          git fetch origin
+          git checkout -B "$BRANCH"
+
       - name: Setup Java 25
         uses: actions/setup-java@v4
         with:
@@ -287,8 +306,6 @@ jobs:
           # Remove META-INF from src tree if it appears
           rm -rf hytale/main/src/META-INF || true
 
-          
-
 
       - name: Write
         run: |
@@ -311,6 +328,9 @@ jobs:
 
       - name: Commit and push (if changed)
         run: |
+          VERSION=${{ steps.upver.outputs.version }}
+          BRANCH="upstream/v$VERSION"
+
           git add hytale/main
 
           if git diff --cached --quiet; then
@@ -318,5 +338,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update master sources (${{ steps.jarinfo.outputs.sha12 }})"
-          git push
+          git commit -m "upstream: sources v$VERSION (${{ steps.jarinfo.outputs.sha12 }})"
+          git push origin "$BRANCH" --force
